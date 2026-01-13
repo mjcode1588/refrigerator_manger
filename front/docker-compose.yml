@@ -1,0 +1,49 @@
+# ================================
+# 냉장고 관리 앱 Docker Compose 설정
+# ================================
+# 사용법:
+#   개발환경: docker compose up -d
+#   프로덕션: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   중지: docker compose down
+#   로그 확인: docker compose logs -f
+
+services:
+  # ================================
+  # Next.js Frontend 서비스
+  # ================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1}
+        - NEXT_PUBLIC_DEFAULT_FRIDGE_ID=${NEXT_PUBLIC_DEFAULT_FRIDGE_ID:-}
+        - NEXT_PUBLIC_ACCESS_TOKEN=${NEXT_PUBLIC_ACCESS_TOKEN:-}
+        - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME:-냉장고 관리}
+        - NEXT_PUBLIC_DEFAULT_EXPIRY_DAYS=${NEXT_PUBLIC_DEFAULT_EXPIRY_DAYS:-3}
+    container_name: refrigerator-manager-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1}
+      - NEXT_PUBLIC_DEFAULT_FRIDGE_ID=${NEXT_PUBLIC_DEFAULT_FRIDGE_ID:-}
+      - NEXT_PUBLIC_ACCESS_TOKEN=${NEXT_PUBLIC_ACCESS_TOKEN:-}
+      - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME:-냉장고 관리}
+      - NEXT_PUBLIC_DEFAULT_EXPIRY_DAYS=${NEXT_PUBLIC_DEFAULT_EXPIRY_DAYS:-3}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - refrigerator-network
+
+# ================================
+# 네트워크 설정
+# ================================
+networks:
+  refrigerator-network:
+    driver: bridge

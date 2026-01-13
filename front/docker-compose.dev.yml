@@ -1,0 +1,22 @@
+# ================================
+# 개발환경용 Docker Compose 오버라이드
+# ================================
+# 사용법: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # 소스 코드 마운트 (Hot Reload 지원)
+      - ./src:/app/src:delegated
+      - ./public:/app/public:delegated
+      # node_modules는 컨테이너 내부 것을 사용
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    command: npm run dev

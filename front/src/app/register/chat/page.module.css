@@ -1,0 +1,524 @@
+/* ===========================================
+   채팅 등록 페이지 스타일
+   =========================================== */
+
+.main {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-primary);
+}
+
+/* 헤더 */
+.header {
+    display: flex;
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.backButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.backButton:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.title {
+    flex: 1;
+    text-align: center;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+}
+
+.spacer {
+    width: 44px;
+}
+
+/* 단계 표시 */
+.steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    padding: var(--space-lg);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.stepNumber {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    background: var(--bg-tertiary);
+    color: var(--text-tertiary);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    transition: all var(--transition-normal);
+}
+
+.stepLabel {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.step.active .stepNumber {
+    background: var(--color-primary-gradient);
+    color: white;
+}
+
+.step.active .stepLabel {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.step.completed .stepNumber {
+    background: var(--color-success);
+    color: white;
+}
+
+.stepLine {
+    width: 40px;
+    height: 2px;
+    background: var(--border-light);
+}
+
+/* 컨텐츠 */
+.content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+    padding: var(--space-lg);
+}
+
+/* 입력 섹션 */
+.inputSection {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.hint {
+    padding: var(--space-md);
+    background: rgba(16, 185, 129, 0.1);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+/* 텍스트 입력 */
+.textInputWrapper {
+    position: relative;
+}
+
+.textInput {
+    width: 100%;
+    padding: var(--space-md);
+    font-size: var(--font-size-base);
+    font-family: inherit;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    resize: vertical;
+    min-height: 120px;
+    transition: border-color var(--transition-fast);
+}
+
+.textInput:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+/* 이미지 섹션 */
+.imageSection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.hiddenInput {
+    display: none;
+}
+
+.imageGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: var(--space-md);
+}
+
+.imagePreview {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-tertiary);
+}
+
+.imagePreview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.removeImageBtn {
+    position: absolute;
+    top: var(--space-xs);
+    right: var(--space-xs);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border-radius: var(--radius-full);
+}
+
+.addImageBtn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    aspect-ratio: 1;
+    background: var(--bg-tertiary);
+    border: 2px dashed var(--border-medium);
+    border-radius: var(--radius-md);
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+    transition: all var(--transition-fast);
+}
+
+.addImageBtn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.errorMessage {
+    padding: var(--space-md);
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: var(--radius-md);
+    color: var(--color-danger);
+    font-size: var(--font-size-sm);
+}
+
+/* 확인/수정 단계 */
+.reviewHeader {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    margin-bottom: var(--space-lg);
+}
+
+.reviewHint {
+    padding: var(--space-md);
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.reviewActions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.selectedCount {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.textButton {
+    font-size: var(--font-size-sm);
+    color: var(--color-primary);
+    transition: color var(--transition-fast);
+}
+
+.textButton:hover {
+    color: var(--color-primary-dark);
+}
+
+/* 후보 리스트 */
+.candidateList {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.candidateCard {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 2px solid var(--border-light);
+    transition: all var(--transition-fast);
+}
+
+.candidateCard:hover {
+    border-color: var(--color-primary);
+}
+
+.candidateCard.unselected {
+    opacity: 0.5;
+    background: var(--bg-tertiary);
+}
+
+.candidateCard.editing {
+    padding: var(--space-lg);
+    border-color: var(--color-primary);
+}
+
+/* 체크박스 */
+.checkbox {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    color: transparent;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.checkbox.checked {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.candidateIcon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+}
+
+.candidateInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.candidateName {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.confidenceBadge {
+    flex-shrink: 0;
+}
+
+.candidateMeta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-top: 2px;
+    flex-wrap: wrap;
+}
+
+.candidateActions {
+    display: flex;
+    gap: var(--space-xs);
+}
+
+.actionBtn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    color: var(--text-tertiary);
+    transition: all var(--transition-fast);
+}
+
+.actionBtn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* 수정 폼 */
+.editForm {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.editRow {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+}
+
+@media (max-width: 600px) {
+    .editRow {
+        grid-template-columns: 1fr;
+    }
+}
+
+.editField {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.editLabel {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.editInput,
+.editSelect {
+    width: 100%;
+    padding: var(--space-sm) var(--space-md);
+    font-size: var(--font-size-base);
+    font-family: inherit;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-md);
+    transition: border-color var(--transition-fast);
+}
+
+.editInput:focus,
+.editSelect:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.quantityInput {
+    display: grid;
+    grid-template-columns: 1fr 80px;
+    gap: var(--space-sm);
+}
+
+.editActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    margin-top: var(--space-sm);
+}
+
+/* 항목 추가 버튼 */
+.addCandidateBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    border: 2px dashed var(--border-medium);
+    border-radius: var(--radius-lg);
+    color: var(--text-tertiary);
+    font-size: var(--font-size-sm);
+    transition: all var(--transition-fast);
+}
+
+.addCandidateBtn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* 하단 버튼 */
+.footer {
+    display: flex;
+    gap: var(--space-md);
+    padding-top: var(--space-lg);
+    border-top: 1px solid var(--border-light);
+    margin-top: auto;
+}
+
+.footer>* {
+    flex: 1;
+}
+
+/* 완료 섹션 */
+.completeSection {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: var(--space-md);
+}
+
+.completeIcon {
+    font-size: 80px;
+    animation: scaleIn 0.5s ease-out;
+}
+
+.completeTitle {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    background: var(--color-primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.completeMessage {
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+}
+
+.completeActions {
+    display: flex;
+    gap: var(--space-md);
+    margin-top: var(--space-lg);
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}

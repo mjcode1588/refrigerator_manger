@@ -1,0 +1,297 @@
+/* ===========================================
+   가족 공유 페이지 스타일
+   =========================================== */
+
+.main {
+    min-height: 100vh;
+    background: var(--bg-primary);
+}
+
+/* 헤더 */
+.header {
+    display: flex;
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.backButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-full);
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.backButton:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.title {
+    flex: 1;
+    text-align: center;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+}
+
+.spacer {
+    width: 44px;
+}
+
+/* 탭 */
+.tabs {
+    display: flex;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-bottom: 2px solid transparent;
+    transition: all var(--transition-fast);
+}
+
+.tab:hover {
+    color: var(--text-primary);
+}
+
+.tab.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+}
+
+/* 컨텐츠 */
+.content {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: var(--space-lg);
+}
+
+/* 멤버 섹션 */
+.membersSection {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+.fridgeInfo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-lg);
+    background: var(--color-primary-gradient);
+    border-radius: var(--radius-lg);
+    color: white;
+}
+
+.fridgeIcon {
+    font-size: 48px;
+}
+
+.fridgeDetails {
+    flex: 1;
+}
+
+.fridgeName {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+}
+
+.fridgeMeta {
+    font-size: var(--font-size-sm);
+    opacity: 0.9;
+}
+
+.memberList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.memberCard {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+}
+
+.memberAvatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: white;
+    overflow: hidden;
+}
+
+.memberAvatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.memberInfo {
+    flex: 1;
+}
+
+.memberName {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: var(--font-size-base);
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.memberEmail {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+/* 초대 섹션 */
+.inviteSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.inviteCard {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: var(--space-2xl) var(--space-lg);
+    background: var(--bg-card);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-light);
+}
+
+.inviteHeader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+}
+
+.inviteIcon,
+.joinIcon {
+    color: var(--color-primary);
+}
+
+.inviteHeader h2,
+.joinHeader h2 {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+}
+
+.inviteHeader p,
+.joinHeader p {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.inviteCodeBox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    width: 100%;
+}
+
+.inviteCodeLabel {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.inviteCodeValue {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md) var(--space-lg);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    font-family: monospace;
+    letter-spacing: 4px;
+    color: var(--text-primary);
+}
+
+.copyBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.copyBtn:hover {
+    background: var(--bg-secondary);
+    color: var(--color-primary);
+}
+
+.inviteCodeHint {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+/* 합류 섹션 */
+.joinSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.joinCard {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: var(--space-2xl) var(--space-lg);
+    background: var(--bg-card);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-light);
+}
+
+.joinHeader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+}
+
+.joinForm {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
