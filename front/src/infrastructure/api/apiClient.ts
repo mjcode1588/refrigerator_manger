@@ -37,11 +37,22 @@ export interface ApiResponse<T> {
     };
 }
 
+type ErrorPayload = {
+    detail?: string;
+    message?: string;
+};
+
 async function readJson<T>(response: Response): Promise<T | undefined> {
     if (response.status === 204) return undefined;
     const text = await response.text();
     if (!text) return undefined;
     return JSON.parse(text) as T;
+}
+
+function getErrorMessage(error: unknown): string | undefined {
+    if (!error || typeof error !== 'object') return undefined;
+    const payload = error as ErrorPayload;
+    return payload.detail || payload.message;
 }
 
 /**
@@ -58,12 +69,12 @@ export async function fetchApi<T>(
         });
 
         if (!response.ok) {
-            const error = await readJson<{ detail?: string; message?: string }>(response).catch(() => ({}));
+            const error = await readJson<ErrorPayload>(response).catch(() => undefined);
             return {
                 success: false,
                 error: {
                     code: `HTTP_${response.status}`,
-                    message: error?.detail || error?.message || '요청 처리 중 오류가 발생했습니다.',
+                    message: getErrorMessage(error) || '요청 처리 중 오류가 발생했습니다.',
                 },
             };
         }
@@ -96,12 +107,12 @@ export async function fetchMultipart<T>(
         });
 
         if (!response.ok) {
-            const error = await readJson<{ detail?: string; message?: string }>(response).catch(() => ({}));
+            const error = await readJson<ErrorPayload>(response).catch(() => undefined);
             return {
                 success: false,
                 error: {
                     code: `HTTP_${response.status}`,
-                    message: error?.detail || error?.message || '요청 처리 중 오류가 발생했습니다.',
+                    message: getErrorMessage(error) || '요청 처리 중 오류가 발생했습니다.',
                 },
             };
         }

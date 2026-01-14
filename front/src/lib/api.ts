@@ -60,7 +60,7 @@ async function fetchApi<T>(
         });
 
         if (!response.ok) {
-            const error = await readJson<{ detail?: string; message?: string }>(response).catch(() => ({}));
+            const error = await readJson<{ detail?: string; message?: string }>(response).catch(() => undefined);
             return {
                 success: false,
                 error: {
@@ -96,7 +96,7 @@ async function fetchMultipart<T>(
         });
 
         if (!response.ok) {
-            const error = await readJson<{ detail?: string; message?: string }>(response).catch(() => ({}));
+            const error = await readJson<{ detail?: string; message?: string }>(response).catch(() => undefined);
             return {
                 success: false,
                 error: {
@@ -221,8 +221,20 @@ export const itemsApi = {
             });
         }
         const response = await fetchMultipart<{ candidates: CandidateDTO[] }>('/items/ingest', formData);
-        if (!response.success || !response.data) {
-            return response as ApiResponse<IngestResponse>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '아이템 인식 결과를 불러오지 못했습니다.',
+                },
+            };
         }
         return {
             success: true,
@@ -249,8 +261,20 @@ export const itemsApi = {
             formData.append('image', first);
         }
         const response = await fetchMultipart<{ candidates: CandidateDTO[] }>('/items/image', formData);
-        if (!response.success || !response.data) {
-            return response as ApiResponse<IngestResponse>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '아이템 인식 결과를 불러오지 못했습니다.',
+                },
+            };
         }
         return {
             success: true,
@@ -291,8 +315,20 @@ export const itemsApi = {
             method: 'POST',
             body: JSON.stringify(payload),
         });
-        if (!response.success || !response.data) {
-            return response as ApiResponse<FoodItem[]>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '아이템 저장에 실패했습니다.',
+                },
+            };
         }
         return { success: true, data: response.data.map(mapItem) };
     },
@@ -315,8 +351,20 @@ export const itemsApi = {
         }
 
         const response = await fetchApi<ItemDTO[]>(`/items?fridge_id=${fridgeId}`);
-        if (!response.success || !response.data) {
-            return response as ApiResponse<PaginatedResponse<FoodItem>>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '아이템 목록을 불러오지 못했습니다.',
+                },
+            };
         }
 
         let items = response.data.map(mapItem);
@@ -385,8 +433,20 @@ export const itemsApi = {
         }
 
         const response = await fetchApi<ItemDTO[]>(`/items?fridge_id=${fridgeId}`);
-        if (!response.success || !response.data) {
-            return response as ApiResponse<FoodItem>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '아이템 정보를 불러오지 못했습니다.',
+                },
+            };
         }
 
         const item = response.data.map(mapItem).find((entry) => entry.id === id);
@@ -419,8 +479,20 @@ export const itemsApi = {
             method: 'PUT',
             body: JSON.stringify(payload),
         });
-        if (!response.success || !response.data) {
-            return response as ApiResponse<FoodItem>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '아이템 수정에 실패했습니다.',
+                },
+            };
         }
         return { success: true, data: mapItem(response.data) };
     },
@@ -452,8 +524,20 @@ export const itemsApi = {
         }
 
         const response = await fetchApi<ItemDTO[]>(`/items/expiring?${params.toString()}`);
-        if (!response.success || !response.data) {
-            return response as ApiResponse<FoodItem[]>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '임박 아이템 정보를 불러오지 못했습니다.',
+                },
+            };
         }
         return { success: true, data: response.data.map(mapItem) };
     },
@@ -482,8 +566,20 @@ export const recipesApi = {
             body: JSON.stringify({ fridge_id: fridgeId, prefer_expiring_first: true }),
         });
 
-        if (!response.success || !response.data) {
-            return response as ApiResponse<Recipe[]>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '레시피 추천 결과를 불러오지 못했습니다.',
+                },
+            };
         }
 
         return { success: true, data: response.data.recipes.map(mapRecipe) };
@@ -509,7 +605,7 @@ export const fridgesApi = {
     async getCurrentFridge(): Promise<ApiResponse<Fridge>> {
         const stored = getCurrentFridge();
         if (!stored) {
-            return { success: true, data: undefined } as ApiResponse<Fridge>;
+            return { success: true, data: undefined };
         }
         return {
             success: true,
@@ -532,8 +628,20 @@ export const fridgesApi = {
             }
         );
 
-        if (!response.success || !response.data) {
-            return response as ApiResponse<Fridge>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '냉장고 생성에 실패했습니다.',
+                },
+            };
         }
 
         const fridge = {
@@ -567,8 +675,20 @@ export const fridgesApi = {
             body: JSON.stringify({ fridge_id: targetId }),
         });
 
-        if (!response.success || !response.data) {
-            return response as ApiResponse<{ inviteCode: string }>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '초대 코드 생성에 실패했습니다.',
+                },
+            };
         }
 
         return { success: true, data: { inviteCode: response.data.invite_code } };
@@ -581,8 +701,20 @@ export const fridgesApi = {
             body: JSON.stringify({ invite_code: inviteCode }),
         });
 
-        if (!response.success || !response.data) {
-            return response as ApiResponse<Fridge>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '냉장고 참여에 실패했습니다.',
+                },
+            };
         }
 
         setCurrentFridge({ id: response.data.fridge_id, name: '공유 냉장고', role: response.data.role });
@@ -605,8 +737,20 @@ export const fridgesApi = {
             `/fridges/${fridgeId}/members`
         );
 
-        if (!response.success || !response.data) {
-            return response as ApiResponse<FridgeMember[]>;
+        if (!response.success) {
+            return {
+                success: false,
+                error: response.error,
+            };
+        }
+        if (!response.data) {
+            return {
+                success: false,
+                error: {
+                    code: 'EMPTY_RESPONSE',
+                    message: '멤버 목록을 불러오지 못했습니다.',
+                },
+            };
         }
 
         return {

@@ -1,0 +1,104 @@
+services:
+  # ================================
+  # PostgreSQL Database
+  # ================================
+  db:
+    image: postgres:16-alpine
+    container_name: fridge_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fridge_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fridge_password}
+      POSTGRES_DB: ${POSTGRES_DB:-fridge}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fridge_user} -d ${POSTGRES_DB:-fridge}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fridge_network
+
+  # ================================
+  # FastAPI Backend
+  # ================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fridge_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-fridge_user}:${POSTGRES_PASSWORD:-fridge_password}@db:5432/${POSTGRES_DB:-fridge}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-10080}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:3000}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_MODE: ${LLM_MODE:-stub}
+      UPLOAD_DIR: ${UPLOAD_DIR:-uploads}
+      IMAGE_BASE_URL: ${IMAGE_BASE_URL:-http://localhost:8000}
+      DEFAULT_EXPIRING_DAYS: ${DEFAULT_EXPIRING_DAYS:-3}
+      INVITE_EXPIRES_HOURS: ${INVITE_EXPIRES_HOURS:-168}
+      INVITE_MAX_USES: ${INVITE_MAX_USES:-1}
+      CRON_SECRET: ${CRON_SECRET:-change-me}
+      CRON_ENABLED: ${CRON_ENABLED:-false}
+    volumes:
+      - backend_uploads:/app/uploads
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+    networks:
+      - fridge_network
+
+  # ================================
+  # Next.js Frontend
+  # ================================
+  frontend:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+        NEXT_PUBLIC_DEFAULT_FRIDGE_ID: ${NEXT_PUBLIC_DEFAULT_FRIDGE_ID:-1}
+        NEXT_PUBLIC_ACCESS_TOKEN: ${NEXT_PUBLIC_ACCESS_TOKEN:-}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-냉장고 관리}
+        NEXT_PUBLIC_DEFAULT_EXPIRY_DAYS: ${NEXT_PUBLIC_DEFAULT_EXPIRY_DAYS:-7}
+    container_name: fridge_frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - fridge_network
+
+# ================================
+# Volumes
+# ================================
+volumes:
+  postgres_data:
+    driver: local
+  backend_uploads:
+    driver: local
+
+# ================================
+# Networks
+# ================================
+networks:
+  fridge_network:
+    driver: bridge

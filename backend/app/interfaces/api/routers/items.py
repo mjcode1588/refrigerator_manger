@@ -24,8 +24,8 @@ router = APIRouter(prefix="/items", tags=["items"])
 
 @router.post("/ingest", response_model=ItemIngestResponse)
 async def ingest_items_handler(
-    text: Annotated[str | None, Form(None)] = None,
-    images: Annotated[list[UploadFile] | None, File(None)] = None,
+    text: Annotated[str | None, Form()] = None,
+    images: Annotated[list[UploadFile] | None, File()] = None,
     llm_client=Depends(get_llm_client),
     image_storage=Depends(get_image_storage),
 ) -> ItemIngestResponse:
