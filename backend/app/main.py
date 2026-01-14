@@ -22,6 +22,11 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
+    # Health check endpoint for Docker
+    @app.get("/health")
+    async def health_check():
+        return {"status": "healthy"}
+
     app.include_router(auth_router, prefix=settings.api_v1_str)
     app.include_router(fridges_router, prefix=settings.api_v1_str)
     app.include_router(items_router, prefix=settings.api_v1_str)
