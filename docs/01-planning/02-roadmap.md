@@ -10,11 +10,11 @@
 
 ```mermaid
 flowchart LR
-    M0["Phase 0\n설계 문서 확정"] --> M1["Phase 1\nOCI 인프라 & DB 구축"]
-    M1 --> M2["Phase 2\nFastAPI 백엔드 핵심 개발"]
-    M2 --> M3["Phase 3\nAndroid 앱 핵심 개발"]
-    M3 --> M4["Phase 4\n통합 테스트 & 안정화"]
-    M4 --> M5["Phase 5\n실사용 배포 및 고도화"]
+    M0["Phase 0\n설계 문서 확정"] --> M1["Phase 1\nOCI 인프라 & 다중 DB 구축"]
+    M1 --> M2["Phase 2\nFastAPI 백엔드 개발"]
+    M2 --> M3["Phase 3\n웹 프론트 기능 실험"]
+    M3 --> M4["Phase 4\nAndroid 앱 개발"]
+    M4 --> M5["Phase 5\n통합 테스트 & 실사용 배포"]
 ```
 
 ---
@@ -24,7 +24,7 @@ flowchart LR
 ### Phase 0: 기획 및 설계 문서 확정 (현재 단계)
 - [x] `docs/` 디렉토리 구조 및 문서 관리 규칙 수립
 - [ ] 기획·아키텍처·기능 명세 문서 검토 및 `확정 (Final)` 전환
-- [ ] 기존 저장소 코드(`backend/`, `front/`) 아카이빙 또는 신규 디렉토리(`server/`, `android/` 등) 배치 결정
+- [ ] 기존 저장소 코드(`backend/`, `front/`) 아카이빙 또는 신규 디렉토리 배치 결정
 
 ### Phase 1: OCI Always Free 인프라 및 다중 DB 기반 구축
 - [ ] OCI Always Free 계정 내 VCN(네트워크), Compute VM 프로비저닝 및 무과금 예산 알림(Budget Alert) 설정
@@ -37,9 +37,16 @@ flowchart LR
 - [ ] **가구(Household) 모듈**: 가구 생성, 1회용/만료형 초대 코드 발급·참여, 구성원 목록/권한 관리
 - [ ] **보관 장소 트리 모듈**: 자기참조 트리 CRUD, 순환 참조 방지 검증, 표준 `WITH RECURSIVE` CTE 기반 하위 노드 일괄 조회
 - [ ] **품목 및 이력 모듈**: 식재료/완제품 CRUD, 수량 증감, 소비/폐기 처리, 변경 이력 자동 기록, 임박 품목 조회 API
-- [ ] 백엔드 단위/통합 테스트 작성 및 Swagger(OpenAPI) 문서화
+- [ ] 백엔드 단위/통합 테스트 작성 (`pytest`) 및 Swagger(OpenAPI) 문서화
 
-### Phase 3: Kotlin Android 앱 핵심 개발
+### Phase 3: 웹 프론트엔드 기능 실험 (Web Prototype / API·UX 검증)
+Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐름을 웹 화면으로 빠르게 실험·검증합니다.
+- [ ] 경량 웹 클라이언트 구성 (CORS 연동, 로그인/테스트 토큰 발급 및 JWT 세션 관리)
+- [ ] **핵심 기능 실험 UI**: 가구 생성/초대 참여, 자유 트리 보관 장소 탐색·추가·이동, 품목 등록·수량 조절·소비/폐기, D-Day 임박 목록 및 변경 이력 확인
+- [ ] 실험 결과를 바탕으로 API 스펙(요청/응답 필드, 에러 코드, UX 불편 사항) 보완 및 확정
+
+### Phase 4: Kotlin Android 앱 개발 (본격 모바일 클라이언트)
+확정된 FastAPI 스펙을 기반으로 실사용 모바일 앱을 개발합니다.
 - [ ] 프로젝트 스캐폴딩 (Kotlin, Jetpack Compose, Hilt, Retrofit/OkHttp, Room, WorkManager)
 - [ ] **인증 & 가구 온보딩 UI**: Google/Kakao 소셜 로그인, 가구 생성 또는 초대 코드 입력 화면
 - [ ] **보관 장소 탐색기 UI**: 트리 구조(폴더/하위 구역) 탐색, 보관 장소 추가/편집/이동
@@ -47,14 +54,11 @@ flowchart LR
 - [ ] **로컬 캐시 & 알림**: Room 캐시 동기화 및 `WorkManager` 기반 유통기한 임박 로컬 알림 스케줄러 구현
 - [ ] **가족 & 변경 이력 UI**: 구성원 목록, 초대 코드 복사/공유, 최근 변경 이력 타임라인
 
-### Phase 4: 통합 테스트 및 안정화
+### Phase 5: 통합 테스트, 안정화 및 실사용 배포
 - [ ] Android ↔ OCI FastAPI ↔ 선택 DB(Oracle ADB / Supabase) 종단간(E2E) 연동 검증
 - [ ] 네트워크 오프라인/지연 상황에서의 Room 캐시 폴백 및 에러 처리 검증
 - [ ] 무료 티어 리소스 사용량(CPU/RAM/DB 스토리지/트래픽) 및 7일 미사용 자동 중지/일시정지 대응 점검
-
-### Phase 5: 실사용 배포 및 추후 확장
-- [ ] 가족 구성원 기기 설치(APK 배포 또는 Google Play 내부 테스트 트랙) 및 실사용 피드백 수집
-- [ ] (선택) 바코드 스캔, AI 사진/영수증 인식, 장보기 리스트 등 확장 기능 설계 착수
+- [ ] 가족 구성원 기기 설치(APK 배포 또는 Google Play 내부 테스트 트랙) 및 추후 확장 기능(바코드/AI/레시피 등) 검토
 
 ---
 

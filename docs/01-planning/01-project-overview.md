@@ -27,27 +27,33 @@
 
 | 영역 | 기술 스택 | 선정 이유 |
 |---|---|---|
-| **Mobile App** | Kotlin, Jetpack Compose, MVVM/Clean Architecture, Room, WorkManager | 최신 Android 표준 UI, 로컬 캐싱 및 오프라인/로컬 알림 최적화 |
+| **Client (1단계 실험)** | 경량 웹 프론트엔드 (Next.js 또는 정적 HTML/JS 프로토타입) | 안드로이드 개발 전 핵심 도메인(트리 보관 장소·재고·가구 공유) 및 API 빠른 검증 |
+| **Client (2단계 본 개발)** | Kotlin, Jetpack Compose, MVVM/Clean Architecture, Room, WorkManager | 최신 Android 표준 UI, 로컬 캐싱 및 오프라인/로컬 알림 최적화 |
 | **Backend API** | Python, FastAPI, SQLAlchemy 2.0, Pydantic v2 | 빠른 REST API 개발 및 SQLAlchemy 기반 DB 벤더 중립적 영속성 계층 구현 |
 | **Database** | 다중 DB 지원: **Oracle Autonomous DB** (`python-oracledb`) 또는 **Supabase PostgreSQL** (`psycopg`/`asyncpg`) | 환경 변수 및 드라이버 교체만으로 Oracle/PostgreSQL 전환 가능 (ANSI SQL 표준 준수) |
-| **Authentication** | Google / Kakao 소셜 로그인 + 자체 JWT (Access/Refresh) | 간편한 모바일 로그인 경험 및 Stateless API 인증 |
+| **Authentication** | Google / Kakao 소셜 로그인 + 자체 JWT (Access/Refresh) | 간편한 모바일/웹 로그인 경험 및 Stateless API 인증 |
 | **Infrastructure** | OCI Compute VM (Always Free) + 무료 관리형 DB (OCI ADB Always Free 또는 Supabase Free) | 월 0원 무과금 운영 보장 |
 
 ---
 
 ## 4. 프로젝트 범위 (Scope)
 
-### 4.1 1차 구현 범위 (In-Scope)
-- **인증 및 가구 공유**: Google/Kakao 소셜 로그인, 가구 생성 및 초대 코드 참여, 구성원 관리, 재고 변경 이력 조회
+### 4.1 1단계 구현 범위 (백엔드 + 웹 기능 실험 MVP)
+- **인증 및 가구 공유**: Google/Kakao 소셜 로그인(또는 개발용 테스트 로그인), 가구 생성 및 초대 코드 참여, 구성원 관리, 재고 변경 이력 조회
 - **자유 트리 보관 장소 관리**: 무제한 깊이의 보관 장소(냉장고, 팬트리, 선반, 칸 등) 생성·수정·이동·삭제
 - **품목(식재료/완제품) 재고 관리**: 품목 등록, 수량/단위 조정, 보관 장소 이동, 소비/폐기 상태 처리, 검색 및 필터링
-- **유통기한/소비기한 알림**: D-Day 상태 분류(만료/임박/여유), Android `WorkManager` 기반 주기적 로컬 알림
-- **OCI Always Free 배포**: FastAPI 서버 배포 및 Autonomous DB 연동
+- **유통기한 D-Day 관리**: D-Day 상태 분류(만료/임박/여유) 및 임박 목록 조회
+- **경량 웹 프론트엔드**: 위 핵심 API 및 UX 흐름을 빠르게 실험·검증하기 위한 웹 프로토타입 UI
+- **OCI Always Free 배포**: FastAPI 서버 배포 및 다중 DB(Oracle ADB / Supabase) 연동
 
-### 4.2 향후 확장 고려 (Out-of-Scope / Backlog)
+### 4.2 2단계 구현 범위 (Kotlin Android 본 개발)
+- **Android 네이티브 앱**: Jetpack Compose UI, Room 로컬 캐시, OkHttp JWT 자동 갱신
+- **기기 로컬 알림**: Android `WorkManager` 기반 주기적 유통기한 임박 로컬 알림
+
+### 4.3 향후 확장 고려 (Backlog)
 - AI 사진/영수증 자동 인식 및 바코드 스캔 등록
 - 보유 재고 기반 레시피 추천 및 장보기(쇼핑) 리스트 연동
-- 소비/폐기 통계 대시보드 및 웹 클라이언트 지원
+- 소비/폐기 통계 대시보드
 - Firebase Cloud Messaging(FCM) 기반 실시간 가족 변경 푸시 알림
 
 ---

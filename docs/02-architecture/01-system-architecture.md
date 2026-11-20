@@ -23,6 +23,10 @@ flowchart TB
         WM --> NET
     end
 
+    subgraph WebProto["1단계: Web Prototype (기능 실험용)"]
+        WEB["경량 웹 프론트엔드\n(보관장소 트리·재고·초대 API 검증)"]
+    end
+
     subgraph OAuth["외부 인증 제공자"]
         GOOGLE["Google OAuth"]
         KAKAO["Kakao OAuth"]
@@ -44,6 +48,7 @@ flowchart TB
 
     UI -.->|소셜 SDK 로그인| OAuth
     NET -->|HTTPS REST API + JWT| PROXY
+    WEB -->|REST API + JWT| PROXY
     API -.->|토큰 검증| OAuth
     DB_ADAPTER -.->|선택 연결| ADB
     DB_ADAPTER -.->|선택 연결| SUPA
