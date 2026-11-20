@@ -118,9 +118,9 @@ Public 저장소 무료(Private 저장소도 월 2,000분 무료) 범위 내에�
 - **앱 배포**: Release/Staging 빌드 생성(OCI HTTPS 도메인 `API_BASE_URL` 주입, 서명 키 적용) 후 가족 테스트용 APK 배포 또는 Google Play 내부 테스트 트랙 업로드
 
 ### 4.4 3단계: 배포 후 실환경 테스트 (Post-Deployment Smoke Test)
-배포 직후 실제 클라우드 및 모바일 기기 환경에서 아래 항목을 반드시 최종 검증합니다.
+배포 직후 실제 클라우드 및 모바일 기기 환경에서 아래 항목을 반드시 최종 검증합니다. 실기기 UI/E2E 검증은 **무선 디버깅 + Google ARTEMIS**([04-artemis-wireless-testing.md](./04-artemis-wireless-testing.md))를 통해 자동화하여 반복 실행합니다.
 1. **인프라/DB 헬스체크**: `GET https://<domain>/api/v1/health` → 선택 DB(Oracle ADB 또는 Supabase) 연결 `200 OK` 및 SSL 인증서 유효성 확인
 2. **소셜 로그인 & JWT 갱신**: Android 실기기에서 Google/Kakao 실제 로그인 → Access Token 만료 후 Refresh Token 자동 갱신 동작 확인
-3. **가족 공동 관리 E2E**: 2대 이상의 실기기(가족 계정 A·B)에서 초대 코드 참여 후, 기기 A에서 품목 등록/소비 시 기기 B 새로고침 및 변경 이력에 즉시 반영되는지 확인
+3. **가족 공동 관리 E2E (ARTEMIS 시나리오)**: 2대 이상의 실기기(가족 계정 A·B)에서 초대 코드 참여 후, 기기 A에서 품목 등록/소비 시 기기 B 새로고침 및 변경 이력에 즉시 반영되는지 확인
 4. **WorkManager 로컬 알림 실기기 검증**: 실기기 배터리 최적화/알림 권한(`POST_NOTIFICATIONS`) 허용 상태에서 임박 품목 알림 수신 및 알림 탭 시 딥링크 이동 확인
 5. **무료 티어 안전 점검**: OCI Budget Alert 정상 설정 여부 및 DB 자동 중지 방지 `cron` 동작 확인

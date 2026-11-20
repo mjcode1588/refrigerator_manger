@@ -1,0 +1,184 @@
+package com.fridge.manager.core.network
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class SocialGoogleRequest(
+    @SerialName("id_token") val idToken: String,
+)
+
+@Serializable
+data class SocialKakaoRequest(
+    @SerialName("access_token") val accessToken: String,
+)
+
+@Serializable
+data class DevLoginRequest(
+    val nickname: String,
+    val email: String? = null,
+)
+
+@Serializable
+data class RefreshRequest(
+    @SerialName("refresh_token") val refreshToken: String,
+)
+
+@Serializable
+data class UserSummaryDto(
+    val id: Long,
+    val nickname: String,
+    val email: String? = null,
+)
+
+@Serializable
+data class TokenResponseDto(
+    @SerialName("access_token") val accessToken: String,
+    @SerialName("refresh_token") val refreshToken: String,
+    @SerialName("token_type") val tokenType: String = "bearer",
+    @SerialName("expires_in") val expiresIn: Int,
+    val user: UserSummaryDto,
+)
+
+@Serializable
+data class UserHouseholdBriefDto(
+    val id: Long,
+    val name: String,
+    val role: String,
+)
+
+@Serializable
+data class UserMeDto(
+    val id: Long,
+    val nickname: String,
+    val email: String? = null,
+    val households: List<UserHouseholdBriefDto> = emptyList(),
+)
+
+@Serializable
+data class CreateHouseholdRequest(
+    val name: String,
+    @SerialName("create_default_locations") val createDefaultLocations: Boolean = true,
+)
+
+@Serializable
+data class JoinHouseholdRequest(
+    val code: String,
+)
+
+@Serializable
+data class HouseholdDto(
+    val id: Long,
+    val name: String,
+    val role: String,
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class HouseholdMemberDto(
+    @SerialName("user_id") val userId: Long,
+    val nickname: String,
+    val email: String? = null,
+    val role: String,
+    @SerialName("joined_at") val joinedAt: String,
+)
+
+@Serializable
+data class CreateInviteRequest(
+    @SerialName("expires_in_hours") val expiresInHours: Int = 24,
+    @SerialName("max_uses") val maxUses: Int = 5,
+)
+
+@Serializable
+data class InviteCodeDto(
+    val code: String,
+    @SerialName("expires_at") val expiresAt: String,
+    @SerialName("max_uses") val maxUses: Int,
+    @SerialName("used_count") val usedCount: Int,
+)
+
+@Serializable
+data class CreateLocationRequest(
+    @SerialName("parent_id") val parentId: Long? = null,
+    val name: String,
+    @SerialName("storage_type") val storageType: String = "CUSTOM",
+    val icon: String? = null,
+    @SerialName("sort_order") val sortOrder: Int = 0,
+)
+
+@Serializable
+data class LocationNodeDto(
+    val id: Long,
+    @SerialName("household_id") val householdId: Long,
+    @SerialName("parent_id") val parentId: Long? = null,
+    val name: String,
+    @SerialName("storage_type") val storageType: String,
+    val icon: String? = null,
+    @SerialName("sort_order") val sortOrder: Int = 0,
+    val depth: Int = 0,
+    @SerialName("full_path") val fullPath: String = "",
+    val children: List<LocationNodeDto> = emptyList(),
+)
+
+@Serializable
+data class CreateItemRequest(
+    @SerialName("location_id") val locationId: Long,
+    val name: String,
+    val category: String = "ETC",
+    val quantity: Double = 1.0,
+    val unit: String = "개",
+    @SerialName("expiry_date") val expiryDate: String? = null,
+    @SerialName("expiry_type") val expiryType: String = "USE_BY",
+    val memo: String? = null,
+)
+
+@Serializable
+data class UpdateItemRequest(
+    @SerialName("location_id") val locationId: Long? = null,
+    val name: String? = null,
+    val quantity: Double? = null,
+    val memo: String? = null,
+)
+
+@Serializable
+data class ConsumeItemRequest(
+    val amount: Double? = null,
+)
+
+@Serializable
+data class ItemDto(
+    val id: Long,
+    @SerialName("household_id") val householdId: Long,
+    @SerialName("location_id") val locationId: Long,
+    @SerialName("location_path") val locationPath: String,
+    val name: String,
+    val category: String,
+    val quantity: Double,
+    val unit: String,
+    @SerialName("expiry_date") val expiryDate: String? = null,
+    @SerialName("expiry_type") val expiryType: String,
+    @SerialName("d_day") val dDay: Int? = null,
+    @SerialName("expiry_state") val expiryState: String,
+    val status: String,
+    val memo: String? = null,
+    @SerialName("updated_at") val updatedAt: String,
+)
+
+@Serializable
+data class ActivityLogDto(
+    val id: Long,
+    @SerialName("household_id") val householdId: Long,
+    @SerialName("actor_user_id") val actorUserId: Long,
+    @SerialName("actor_nickname") val actorNickname: String,
+    @SerialName("entity_type") val entityType: String,
+    @SerialName("entity_id") val entityId: Long,
+    @SerialName("action_type") val actionType: String,
+    val detail: Map<String, String>? = null,
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class ActivityListDto(
+    val items: List<ActivityLogDto> = emptyList(),
+    @SerialName("next_cursor") val nextCursor: Long? = null,
+)
