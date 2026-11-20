@@ -18,9 +18,9 @@
 ### 02. 아키텍처 (`02-architecture/`)
 | 문서 | 설명 | 상태 |
 |---|---|---|
-| [01-system-architecture.md](./02-architecture/01-system-architecture.md) | Kotlin Android + FastAPI + OCI Autonomous DB 전체 시스템 구조 | 초안 |
-| [02-oci-always-free-infra.md](./02-architecture/02-oci-always-free-infra.md) | OCI Always Free 무과금 인프라 설계, 한도 제약 및 운영 전략 | 초안 |
-| [03-database-erd.md](./02-architecture/03-database-erd.md) | Oracle Autonomous Database ERD, 테이블 정의 및 자유 트리 설계 | 초안 |
+| [01-system-architecture.md](./02-architecture/01-system-architecture.md) | Kotlin Android + FastAPI + 다중 DB(Oracle ADB / Supabase 등) 전체 시스템 구조 | 초안 |
+| [02-oci-always-free-infra.md](./02-architecture/02-oci-always-free-infra.md) | OCI Always Free 무과금 인프라 및 무료 DB(Oracle ADB / Supabase) 운영 전략 | 초안 |
+| [03-database-erd.md](./02-architecture/03-database-erd.md) | DB 벤더 중립적 ERD, Oracle/PostgreSQL(Supabase) 호환성 및 자유 트리 설계 | 초안 |
 | [04-api-spec.md](./02-architecture/04-api-spec.md) | REST API 엔드포인트, 인증 헤더, 공통 응답/에러 규격 | 초안 |
 
 ### 03. 기능 명세 (`03-features/`)
@@ -33,7 +33,7 @@
 ### 04. 개발 및 운영 가이드 (`04-guides/`)
 | 문서 | 설명 | 상태 |
 |---|---|---|
-| [01-backend-setup.md](./04-guides/01-backend-setup.md) | FastAPI + `python-oracledb` + OCI Autonomous DB 연결 및 배포 가이드 | 초안 |
+| [01-backend-setup.md](./04-guides/01-backend-setup.md) | FastAPI 다중 DB(Oracle ADB / Supabase PostgreSQL) 연결 설정 및 OCI 배포 가이드 | 초안 |
 | [02-android-setup.md](./04-guides/02-android-setup.md) | Kotlin + Jetpack Compose + Room + WorkManager 앱 구조 및 빌드 가이드 | 초안 |
 
 ---

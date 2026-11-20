@@ -19,7 +19,7 @@
 1. **유연한 보관 장소 계층화**: 냉장고뿐만 아니라 팬트리, 다용도실, 서랍 칸까지 사용자가 원하는 깊이로 자유롭게 트리 구조를 구성할 수 있습니다.
 2. **놓치지 않는 기한 관리**: 유통기한/소비기한 D-Day를 직관적으로 시각화하고, 외부 푸시 서버 비용 없이 Android 로컬 알림(`WorkManager`)으로 임박 품목을 안내합니다.
 3. **가족/동거인 실시간 협업**: 초대 코드를 통해 가족 구성원이 하나의 가구(Household) 공간을 공유하고, 누가 어떤 품목을 추가·소비·폐기했는지 변경 이력을 투명하게 확인합니다.
-4. **무과금(Zero-Cost) 클라우드 운영**: Oracle Cloud Infrastructure(OCI)의 **Always Free** 티어만으로 백엔드 API 서버와 관리형 데이터베이스를 안정적으로 운영합니다.
+4. **무과금(Zero-Cost) 및 DB 유연성**: Oracle Cloud(OCI) **Always Free** VM을 기반으로 운영하며, 데이터베이스 계층을 추상화하여 **OCI Autonomous DB**, **Supabase(PostgreSQL)** 등 무료 관리형 DB 서비스를 환경 설정만으로 자유롭게 선택·교체할 수 있도록 설계합니다.
 
 ---
 
@@ -28,10 +28,10 @@
 | 영역 | 기술 스택 | 선정 이유 |
 |---|---|---|
 | **Mobile App** | Kotlin, Jetpack Compose, MVVM/Clean Architecture, Room, WorkManager | 최신 Android 표준 UI, 로컬 캐싱 및 오프라인/로컬 알림 최적화 |
-| **Backend API** | Python, FastAPI, SQLAlchemy 2.0, Pydantic v2, `python-oracledb` | 빠른 REST API 개발, 비동기 지원 및 Oracle DB 공식 드라이버 연동 |
-| **Database** | Oracle Autonomous Database (OCI Always Free) | 관리형 DB로 백업/패치 부담 최소화, 계층형 트리 쿼리(`CONNECT BY`/CTE) 강력 지원 |
+| **Backend API** | Python, FastAPI, SQLAlchemy 2.0, Pydantic v2 | 빠른 REST API 개발 및 SQLAlchemy 기반 DB 벤더 중립적 영속성 계층 구현 |
+| **Database** | 다중 DB 지원: **Oracle Autonomous DB** (`python-oracledb`) 또는 **Supabase PostgreSQL** (`psycopg`/`asyncpg`) | 환경 변수 및 드라이버 교체만으로 Oracle/PostgreSQL 전환 가능 (ANSI SQL 표준 준수) |
 | **Authentication** | Google / Kakao 소셜 로그인 + 자체 JWT (Access/Refresh) | 간편한 모바일 로그인 경험 및 Stateless API 인증 |
-| **Infrastructure** | OCI Compute VM (Always Free) + OCI Autonomous DB (Always Free) | 월 0원 무과금 운영 보장 |
+| **Infrastructure** | OCI Compute VM (Always Free) + 무료 관리형 DB (OCI ADB Always Free 또는 Supabase Free) | 월 0원 무과금 운영 보장 |
 
 ---
 

@@ -1,4 +1,4 @@
-# 03. 데이터베이스 설계 (Oracle Autonomous DB ERD)
+# 03. 데이터베이스 설계 (DB 벤더 중립 ERD 및 호환성 가이드)
 
 > **상태**: 초안 (Draft)  
 > **최종 수정일**: 2026-11-19  
@@ -6,165 +6,173 @@
 
 ---
 
-## 1. 논리 ERD
+## 1. DB 벤더 중립 설계 원칙
+
+본 스키마는 **Oracle Autonomous Database**와 **Supabase (PostgreSQL)**를 비롯한 표준 RDBMS 어디서나 동일한 애플리케이션 코드로 동작하도록 설계합니다.
+
+1. **ANSI SQL 표준 타입 사용**: 특정 벤더 전용 타입(`VARCHAR2`, `NUMBER`, `JSONB`, `UUID` 전용 함수 등)에 직접 의존하지 않고, SQLAlchemy 2.0 추상 타입을 통해 각 DB 방언(Dialect)으로 매핑합니다.
+2. **표준 계층 쿼리 사용**: 자유 트리 보관 장소 조회 시 Oracle 전용 `CONNECT BY` 대신 Oracle과 PostgreSQL 모두 지원하는 **ANSI 표준 `WITH RECURSIVE` CTE** (또는 가구 단위 전체 노드 조회 후 애플리케이션 메모리 트리 조립)를 사용합니다.
+3. **식별자 네이밍**: 모든 테이블명과 컬럼명은 소문자 `snake_case`를 사용하며, Oracle/PostgreSQL 양쪽의 예약어(`user`, `group`, `order`, `level`, `date` 등)를 피합니다.
+
+---
+
+## 2. 논리 ERD (ANSI SQL 표준 타입 기준)
 
 ```mermaid
 erDiagram
-    USERS ||--o{ SOCIAL_ACCOUNTS : "links"
-    USERS ||--o{ REFRESH_TOKENS : "owns"
-    USERS ||--o{ HOUSEHOLD_MEMBERS : "joins"
-    HOUSEHOLDS ||--o{ HOUSEHOLD_MEMBERS : "has"
-    HOUSEHOLDS ||--o{ INVITE_CODES : "issues"
-    HOUSEHOLDS ||--o{ STORAGE_LOCATIONS : "contains"
-    STORAGE_LOCATIONS ||--o{ STORAGE_LOCATIONS : "parent_of (tree)"
-    STORAGE_LOCATIONS ||--o{ ITEMS : "stores"
-    HOUSEHOLDS ||--o{ ITEMS : "owns"
-    HOUSEHOLDS ||--o{ ACTIVITY_LOGS : "records"
-    USERS ||--o{ ACTIVITY_LOGS : "performs"
+    users ||--o{ social_accounts : "links"
+    users ||--o{ refresh_tokens : "owns"
+    users ||--o{ household_members : "joins"
+    households ||--o{ household_members : "has"
+    households ||--o{ invite_codes : "issues"
+    households ||--o{ storage_locations : "contains"
+    storage_locations ||--o{ storage_locations : "parent_of (tree)"
+    storage_locations ||--o{ items : "stores"
+    households ||--o{ items : "owns"
+    households ||--o{ activity_logs : "records"
+    users ||--o{ activity_logs : "performs"
 
-    USERS {
-        NUMBER id PK
-        VARCHAR2 nickname
-        VARCHAR2 email
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+    users {
+        BIGINT id PK
+        VARCHAR nickname
+        VARCHAR email
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
     }
 
-    SOCIAL_ACCOUNTS {
-        NUMBER id PK
-        NUMBER user_id FK
-        VARCHAR2 provider
-        VARCHAR2 provider_user_id
-        TIMESTAMP created_at
+    social_accounts {
+        BIGINT id PK
+        BIGINT user_id FK
+        VARCHAR provider
+        VARCHAR provider_user_id
+        TIMESTAMPTZ created_at
     }
 
-    REFRESH_TOKENS {
-        NUMBER id PK
-        NUMBER user_id FK
-        VARCHAR2 token_hash
-        TIMESTAMP expires_at
-        TIMESTAMP revoked_at
-        TIMESTAMP created_at
+    refresh_tokens {
+        BIGINT id PK
+        BIGINT user_id FK
+        VARCHAR token_hash
+        TIMESTAMPTZ expires_at
+        TIMESTAMPTZ revoked_at
+        TIMESTAMPTZ created_at
     }
 
-    HOUSEHOLDS {
-        NUMBER id PK
-        VARCHAR2 name
-        NUMBER created_by FK
-        TIMESTAMP created_at
+    households {
+        BIGINT id PK
+        VARCHAR name
+        BIGINT created_by FK
+        TIMESTAMPTZ created_at
     }
 
-    HOUSEHOLD_MEMBERS {
-        NUMBER id PK
-        NUMBER household_id FK
-        NUMBER user_id FK
-        VARCHAR2 role
-        TIMESTAMP joined_at
+    household_members {
+        BIGINT id PK
+        BIGINT household_id FK
+        BIGINT user_id FK
+        VARCHAR role
+        TIMESTAMPTZ joined_at
     }
 
-    INVITE_CODES {
-        NUMBER id PK
-        NUMBER household_id FK
-        VARCHAR2 code UK
-        NUMBER created_by FK
-        TIMESTAMP expires_at
-        NUMBER max_uses
-        NUMBER used_count
-        TIMESTAMP created_at
+    invite_codes {
+        BIGINT id PK
+        BIGINT household_id FK
+        VARCHAR code UK
+        BIGINT created_by FK
+        TIMESTAMPTZ expires_at
+        INTEGER max_uses
+        INTEGER used_count
+        TIMESTAMPTZ created_at
     }
 
-    STORAGE_LOCATIONS {
-        NUMBER id PK
-        NUMBER household_id FK
-        NUMBER parent_id FK
-        VARCHAR2 name
-        VARCHAR2 storage_type
-        VARCHAR2 icon
-        NUMBER sort_order
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+    storage_locations {
+        BIGINT id PK
+        BIGINT household_id FK
+        BIGINT parent_id FK
+        VARCHAR name
+        VARCHAR storage_type
+        VARCHAR icon
+        INTEGER sort_order
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
     }
 
-    ITEMS {
-        NUMBER id PK
-        NUMBER household_id FK
-        NUMBER location_id FK
-        VARCHAR2 name
-        VARCHAR2 category
-        NUMBER quantity
-        VARCHAR2 unit
+    items {
+        BIGINT id PK
+        BIGINT household_id FK
+        BIGINT location_id FK
+        VARCHAR name
+        VARCHAR category
+        DECIMAL quantity
+        VARCHAR unit
         DATE expiry_date
-        VARCHAR2 expiry_type
-        VARCHAR2 status
-        VARCHAR2 memo
-        NUMBER created_by FK
-        NUMBER updated_by FK
-        TIMESTAMP created_at
-        TIMESTAMP updated_at
+        VARCHAR expiry_type
+        VARCHAR status
+        VARCHAR memo
+        BIGINT created_by FK
+        BIGINT updated_by FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
     }
 
-    ACTIVITY_LOGS {
-        NUMBER id PK
-        NUMBER household_id FK
-        NUMBER actor_user_id FK
-        VARCHAR2 entity_type
-        NUMBER entity_id
-        VARCHAR2 action_type
-        CLOB detail_json
-        TIMESTAMP created_at
+    activity_logs {
+        BIGINT id PK
+        BIGINT household_id FK
+        BIGINT actor_user_id FK
+        VARCHAR entity_type
+        BIGINT entity_id
+        VARCHAR action_type
+        TEXT detail_json
+        TIMESTAMPTZ created_at
     }
 ```
 
 ---
 
-## 2. 주요 테이블 상세 설계 (Oracle DB 기준)
+## 3. SQLAlchemy ↔ Oracle / PostgreSQL(Supabase) 타입 매핑
 
-Oracle Autonomous Database (19c/23ai) 특성을 반영하여 PK는 `GENERATED BY DEFAULT AS IDENTITY`, 타임스탬프는 `TIMESTAMP WITH TIME ZONE`을 기본으로 사용합니다.
+| 논리 타입 | SQLAlchemy 2.0 정의 | Oracle ADB 매핑 | Supabase (PostgreSQL) 매핑 |
+|---|---|---|---|
+| **PK Identity** | `BigInteger` + `Identity()` | `NUMBER(19) GENERATED BY DEFAULT AS IDENTITY` | `BIGINT GENERATED BY DEFAULT AS IDENTITY` |
+| **문자열** | `String(n)` | `VARCHAR2(n CHAR)` | `VARCHAR(n)` |
+| **수량(소수점)** | `Numeric(10, 2)` | `NUMBER(10, 2)` | `NUMERIC(10, 2)` |
+| **날짜** | `Date` | `DATE` | `DATE` |
+| **타임스탬프(UTC)** | `DateTime(timezone=True)` | `TIMESTAMP WITH TIME ZONE` | `TIMESTAMPTZ` |
+| **JSON 이력** | `JSON` (또는 `Text` + 직렬화) | `CLOB` (`IS JSON`) / `JSON` | `JSON` / `TEXT` |
 
-### 2.1 `USERS` / `SOCIAL_ACCOUNTS` / `REFRESH_TOKENS`
-- `SOCIAL_ACCOUNTS`: `(provider, provider_user_id)` 복합 유니크 제약(`GOOGLE`, `KAKAO`)으로 동일 소셜 계정 중복 가입 방지.
-- `REFRESH_TOKENS`: 평문 대신 SHA-256 해시(`token_hash`) 저장, 로그아웃 또는 토큰 회전(Rotation) 시 `revoked_at` 기록.
-
-### 2.2 `HOUSEHOLDS` / `HOUSEHOLD_MEMBERS` / `INVITE_CODES`
-- `HOUSEHOLD_MEMBERS`: `(household_id, user_id)` 유니크 제약, `role`은 `OWNER` | `MEMBER`.
-- `INVITE_CODES`: 대문자 영숫자 6~8자리 코드(`code`), 기본 만료 시간 24시간, 최대 사용 횟수(`max_uses`) 지원.
-
-### 2.3 `STORAGE_LOCATIONS` (자유 트리 구조)
-- `parent_id`: 최상위 루트 보관 장소(예: `안방 냉장고`, `주방 팬트리`)는 `NULL`, 하위 구역(예: `냉동실`, `2단 선반`)은 상위 `STORAGE_LOCATIONS.id` 참조.
-- **무결성 규칙**:
-  - `parent_id`가 존재할 경우 반드시 동일한 `household_id`에 속해야 함(애플리케이션 레벨 검증).
-  - 자기 자신이나 자신의 하위 노드를 `parent_id`로 지정하는 순환 참조(Cycle) 금지.
-  - 하위 장소나 품목이 남아있는 장소 삭제 시 처리 정책은 API 파라미터(`cascade` 또는 `move_to_location_id`)로 명시적 처리.
-- **Oracle 계층 조회 예시**:
-  ```sql
-  SELECT id, parent_id, name, LEVEL AS depth,
-         SYS_CONNECT_BY_PATH(name, ' > ') AS full_path
-  FROM storage_locations
-  WHERE household_id = :household_id
-  START WITH parent_id IS NULL
-  CONNECT BY PRIOR id = parent_id
-  ORDER SIBLINGS BY sort_order, id;
-  ```
-
-### 2.4 `ITEMS` (식재료 및 완제품)
-- `category`: `FRESH`(신선식품), `MEAT_FISH`(육류/수산), `DAIRY`(유제품), `PROCESSED`(가공/완제품), `BEVERAGE`(음료), `SAUCE`(양념/소스), `ETC`(기타)
-- `quantity`: `NUMBER(10, 2)` (소수점 수량 지원, 예: `0.5`, `1.5`)
-- `expiry_type`: `USE_BY`(소비기한) | `BEST_BEFORE`(유통기한) | `NONE`(기한 없음)
-- `status`: `ACTIVE`(보관 중) | `CONSUMED`(소비 완료) | `DISCARDED`(폐기)
-
-### 2.5 `ACTIVITY_LOGS` (가족 변경 이력)
-- `entity_type`: `ITEM` | `LOCATION` | `MEMBER`
-- `action_type`: `CREATED` | `UPDATED` | `MOVED` | `CONSUMED` | `DISCARDED` | `DELETED` | `JOINED`
-- `detail_json`: 변경 전/후 스냅샷 및 요약 정보 (`IS JSON` 체크 제약 적용).
-- **스토리지 관리 (20GB 한도 대응)**: 이력이 무한히 쌓이지 않도록 90일 또는 180일 초과 로그는 주기적 정리(Purge) 정책 적용 고려.
+> [!NOTE]
+> **Oracle 빈 문자열(`""`) 주의사항**: Oracle은 빈 문자열 `""`을 `NULL`로 취급하는 반면 PostgreSQL은 빈 문자열과 `NULL`을 구분합니다. 이를 통일하기 위해 백엔드 Pydantic 스키마 입력 검증 단계에서 공백/빈 문자열 선택 필드(`memo`, `icon` 등)는 일괄 `None`(`NULL`)으로 정규화합니다.
 
 ---
 
-## 3. 주요 인덱스 전략
+## 4. 주요 테이블 상세 및 자유 트리 조회 전략
+
+### 4.1 `users` / `social_accounts` / `refresh_tokens`
+- `social_accounts`: `(provider, provider_user_id)` 복합 유니크 제약(`GOOGLE`, `KAKAO`).
+- `refresh_tokens`: SHA-256 해시(`token_hash`) 저장, 로그아웃/회전 시 `revoked_at` 기록.
+
+### 4.2 `households` / `household_members` / `invite_codes`
+- `household_members`: `(household_id, user_id)` 유니크 제약, `role`은 `OWNER` | `MEMBER`.
+- `invite_codes`: 영숫자 8자리 유니크 코드, 만료 시간(`expires_at`) 및 최대 사용 횟수(`max_uses`).
+
+### 4.3 `storage_locations` (자유 트리 구조)
+- `parent_id`: 최상위 보관 장소는 `NULL`, 하위 구역은 부모 `storage_locations.id` 참조.
+- **무결성 규칙**: 동일 `household_id` 소속 검증 및 순환 참조(Cycle) 방지.
+- **DB 중립적 트리 조회 방식**:
+  - 가정당 보관 장소 노드 수는 통상 10~100개 수준이므로, `WHERE household_id = :household_id ORDER BY sort_order, id`로 한 번에 조회 후 백엔드(Python)에서 트리와 전체 경로(`full_path`)를 조립하는 방식이 **가장 빠르고 Oracle/PostgreSQL 양쪽에서 100% 동일하게 동작**합니다.
+  - 특정 노드의 모든 하위 `location_id` 필터링이 DB 쿼리 레벨에서 필요할 경우, SQLAlchemy의 `.cte(recursive=True)`를 사용하여 표준 `WITH RECURSIVE` 쿼리를 생성합니다.
+
+### 4.4 `items` & `activity_logs`
+- `items.category`: `FRESH`, `MEAT_FISH`, `DAIRY`, `PROCESSED`, `BEVERAGE`, `SAUCE`, `ETC`
+- `items.expiry_type`: `USE_BY` | `BEST_BEFORE` | `NONE`
+- `items.status`: `ACTIVE` | `CONSUMED` | `DISCARDED`
+- `activity_logs`: `entity_type`(`ITEM`|`LOCATION`|`MEMBER`), `action_type`(`CREATED`|`UPDATED`|`MOVED`|`CONSUMED`|`DISCARDED`|`DELETED`|`JOINED`), `detail_json` 저장.
+
+---
+
+## 5. 주요 인덱스 전략
 
 | 테이블 | 인덱스 컬럼 | 목적 |
 |---|---|---|
-| `STORAGE_LOCATIONS` | `(household_id, parent_id, sort_order)` | 트리 탐색 및 정렬 최적화 |
-| `ITEMS` | `(household_id, status, expiry_date)` | 임박/만료 품목 조회 및 WorkManager 동기화 최적화 |
-| `ITEMS` | `(household_id, location_id, status)` | 특정 보관 장소 내 재고 목록 조회 |
-| `ACTIVITY_LOGS` | `(household_id, created_at DESC)` | 가구별 최신 변경 이력 페이지네이션 |
+| `storage_locations` | `(household_id, parent_id, sort_order)` | 가구별 트리 탐색 및 정렬 최적화 |
+| `items` | `(household_id, status, expiry_date)` | 임박/만료 품목 조회 및 WorkManager 동기화 |
+| `items` | `(household_id, location_id, status)` | 특정 보관 장소 내 재고 목록 조회 |
+| `activity_logs` | `(household_id, created_at)` | 가구별 최신 변경 이력 조회 |

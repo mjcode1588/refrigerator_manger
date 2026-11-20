@@ -33,7 +33,7 @@
 ### 2.1 시스템 / 헬스체크
 | Method | Endpoint | 설명 | 인증 |
 |---|---|---|---|
-| `GET` | `/health` | 서버 및 Oracle DB 연결 상태 확인 (`SELECT 1 FROM DUAL`) | 불필요 |
+| `GET` | `/health` | 서버 및 연결된 DB(Oracle ADB / Supabase 등) 상태 확인 | 불필요 |
 
 ### 2.2 인증 (`auth`)
 | Method | Endpoint | 설명 | 인증 |

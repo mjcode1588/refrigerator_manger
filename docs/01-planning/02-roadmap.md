@@ -26,16 +26,16 @@ flowchart LR
 - [ ] 기획·아키텍처·기능 명세 문서 검토 및 `확정 (Final)` 전환
 - [ ] 기존 저장소 코드(`backend/`, `front/`) 아카이빙 또는 신규 디렉토리(`server/`, `android/` 등) 배치 결정
 
-### Phase 1: OCI Always Free 인프라 및 DB 기반 구축
-- [ ] OCI Always Free 계정 내 VCN(네트워크), Compute VM, Autonomous Database(ADB) 프로비저닝
-- [ ] ADB Wallet/mTLS 또는 TLS 접속 설정 및 무과금 한도/예산 알림(Budget Alert) 설정
-- [ ] Oracle DB 스키마(DDL) 및 마이그레이션(Alembic 또는 SQL 스크립트) 초기 적용
+### Phase 1: OCI Always Free 인프라 및 다중 DB 기반 구축
+- [ ] OCI Always Free 계정 내 VCN(네트워크), Compute VM 프로비저닝 및 무과금 예산 알림(Budget Alert) 설정
+- [ ] 관리형 DB 선택 및 연결 구성: **OCI Autonomous DB (Always Free)** 또는 **Supabase (Free Tier PostgreSQL)**
+- [ ] SQLAlchemy 2.0 + Alembic 기반 **DB 벤더 중립적(ANSI SQL) 스키마 및 Repository 어댑터** 구현 (`oracle` / `postgresql` 전환 테스트 포함)
 - [ ] Compute VM 내 FastAPI 헬스체크 엔드포인트 + HTTPS(Reverse Proxy) 동작 검증
 
 ### Phase 2: FastAPI 백엔드 핵심 API 개발
 - [ ] **인증 모듈**: Google/Kakao ID Token·Access Token 검증 및 자체 JWT(Access/Refresh) 발급·갱신
 - [ ] **가구(Household) 모듈**: 가구 생성, 1회용/만료형 초대 코드 발급·참여, 구성원 목록/권한 관리
-- [ ] **보관 장소 트리 모듈**: 자기참조 트리 CRUD, 순환 참조 방지 검증, 하위 노드 일괄 조회
+- [ ] **보관 장소 트리 모듈**: 자기참조 트리 CRUD, 순환 참조 방지 검증, 표준 `WITH RECURSIVE` CTE 기반 하위 노드 일괄 조회
 - [ ] **품목 및 이력 모듈**: 식재료/완제품 CRUD, 수량 증감, 소비/폐기 처리, 변경 이력 자동 기록, 임박 품목 조회 API
 - [ ] 백엔드 단위/통합 테스트 작성 및 Swagger(OpenAPI) 문서화
 
@@ -48,9 +48,9 @@ flowchart LR
 - [ ] **가족 & 변경 이력 UI**: 구성원 목록, 초대 코드 복사/공유, 최근 변경 이력 타임라인
 
 ### Phase 4: 통합 테스트 및 안정화
-- [ ] Android ↔ OCI FastAPI ↔ OCI Autonomous DB 종단간(E2E) 연동 검증
+- [ ] Android ↔ OCI FastAPI ↔ 선택 DB(Oracle ADB / Supabase) 종단간(E2E) 연동 검증
 - [ ] 네트워크 오프라인/지연 상황에서의 Room 캐시 폴백 및 에러 처리 검증
-- [ ] OCI Always Free 리소스 사용량(CPU/RAM/DB 스토리지/트래픽) 및 ADB 자동 중지(7일 미사용) 대응 점검
+- [ ] 무료 티어 리소스 사용량(CPU/RAM/DB 스토리지/트래픽) 및 7일 미사용 자동 중지/일시정지 대응 점검
 
 ### Phase 5: 실사용 배포 및 추후 확장
 - [ ] 가족 구성원 기기 설치(APK 배포 또는 Google Play 내부 테스트 트랙) 및 실사용 피드백 수집
