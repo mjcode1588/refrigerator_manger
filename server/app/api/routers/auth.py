@@ -104,8 +104,8 @@ def dev_login(
     body: DevLoginRequest,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    if settings.app_env != "local":
-        raise AppError("NOT_FOUND", "로컬 개발 환경에서만 사용할 수 있습니다.", 404)
+    if not settings.allow_dev_login:
+        raise AppError("NOT_FOUND", "체험 로그인이 비활성화되어 있습니다.", 404)
     info = SocialUserInfo(
         provider="DEV",
         provider_user_id=body.nickname.strip().lower(),

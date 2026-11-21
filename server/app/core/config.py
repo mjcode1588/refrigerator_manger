@@ -42,7 +42,8 @@ class Settings(BaseSettings):
     jwt_access_expire_minutes: int = 30
     jwt_refresh_expire_days: int = 30
 
-    # 소셜 로그인 설정
+    # 소셜 로그인 및 체험 로그인 설정
+    allow_dev_login: bool = True
     google_client_id: str | None = None
     kakao_rest_api_key: str | None = None
 

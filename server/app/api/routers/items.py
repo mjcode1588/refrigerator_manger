@@ -256,17 +256,45 @@ def consume_item(
 ) -> ItemResponse:
     item = _get_item_or_404(db, household_id, item_id)
     amount = body.amount if body is not None else None
+    remaining_quantity = body.remaining_quantity if body is not None else None
+    note = body.note if body is not None else None
     before_qty = Decimal(item.quantity)
 
-    if amount is None or amount >= before_qty:
+    if remaining_quantity is not None:
+        if remaining_quantity > before_qty:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "INVALID_REMAINING_QUANTITY",
+                    "message": "남은 수량은 현재 보유 수량보다 클 수 없습니다.",
+                },
+            )
+        item.quantity = remaining_quantity.quantize(Decimal("0.01"))
+        consumed_amount = (before_qty - item.quantity).quantize(Decimal("0.01"))
+        if item.quantity <= Decimal("0.00"):
+            item.quantity = Decimal("0.00")
+            item.status = ItemStatus.CONSUMED.value
+    elif amount is None or amount >= before_qty:
         item.quantity = Decimal("0.00")
         item.status = ItemStatus.CONSUMED.value
         consumed_amount = before_qty
     else:
-        item.quantity = before_qty - amount
-        consumed_amount = amount
+        item.quantity = (before_qty - amount).quantize(Decimal("0.01"))
+        consumed_amount = amount.quantize(Decimal("0.01"))
+
+    if note is not None:
+        item.memo = note
 
     item.updated_by = member.user_id
+    detail_payload: dict[str, object] = {
+        "name": item.name,
+        "consumed": float(consumed_amount),
+        "remaining": float(item.quantity),
+        "unit": item.unit,
+    }
+    if note is not None:
+        detail_payload["note"] = note
+
     record_activity(
         db,
         household_id=household_id,
@@ -274,12 +302,7 @@ def consume_item(
         entity_type="ITEM",
         entity_id=item.id,
         action_type="CONSUMED",
-        detail={
-            "name": item.name,
-            "consumed": float(consumed_amount),
-            "remaining": float(item.quantity),
-            "unit": item.unit,
-        },
+        detail=detail_payload,
     )
     db.commit()
     db.refresh(item)

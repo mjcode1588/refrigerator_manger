@@ -3,7 +3,7 @@ from decimal import Decimal
 from enum import StrEnum
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 KST = ZoneInfo("Asia/Seoul")
 
@@ -99,6 +99,19 @@ class UpdateItemRequest(BaseModel):
 
 class ConsumeItemRequest(BaseModel):
     amount: Decimal | None = Field(default=None, gt=0)
+    remaining_quantity: Decimal | None = Field(default=None, ge=0)
+    note: str | None = Field(default=None, max_length=200)
+
+    @field_validator("note")
+    @classmethod
+    def normalize_note(cls, v: str | None) -> str | None:
+        return _blank_to_none(v)
+
+    @model_validator(mode="after")
+    def validate_amount_or_remaining(self) -> "ConsumeItemRequest":
+        if self.amount is not None and self.remaining_quantity is not None:
+            raise ValueError("Provide either amount or remaining_quantity, not both")
+        return self
 
 
 class ItemResponse(BaseModel):

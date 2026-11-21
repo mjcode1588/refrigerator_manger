@@ -1,7 +1,7 @@
 # 04. REST API 명세 (API Specification)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-19  
+> **최종 수정일**: 2026-11-21  
 > **관련 문서**: [DB ERD](./03-database-erd.md), [인증 및 가구 공유](../03-features/01-auth-and-household.md), [보관 장소 및 재고](../03-features/02-storage-and-inventory.md)
 
 ---
@@ -69,10 +69,11 @@
 |---|---|---|---|
 | `GET` | `/households/{household_id}/items` | 품목 목록 조회 (필터: `location_id`, `include_sublocations`, `status`, `category`, `q`, `sort`) | `MEMBER`+ |
 | `GET` | `/households/{household_id}/items/expiring` | 유통기한 임박/만료 품목 조회 (`within_days=7`, WorkManager 동기화용) | `MEMBER`+ |
-| `POST` | `/households/{household_id}/items` | 품목 등록 | `MEMBER`+ |
+| `POST` | `/households/{household_id}/items/photo-upload-url` | 품목 사진(`detail` 1280px WebP ≤500KB, `thumb` 400px WebP ≤100KB) 직접 업로드용 Pre-signed URL 발급 | `MEMBER`+ |
+| `POST` | `/households/{household_id}/items` | 품목 등록 (`detail_image_key`, `thumb_image_key` 선택 포함) | `MEMBER`+ |
 | `GET` | `/households/{household_id}/items/{item_id}` | 품목 상세 조회 | `MEMBER`+ |
 | `PATCH` | `/households/{household_id}/items/{item_id}` | 품목 정보/수량/보관 장소 수정 | `MEMBER`+ |
-| `POST` | `/households/{household_id}/items/{item_id}/consume` | 소비 처리 (부분 수량 차감 또는 전량 `CONSUMED` 전환) | `MEMBER`+ |
+| `POST` | `/households/{household_id}/items/{item_id}/consume` | 소비 처리 (`amount` 또는 `remaining_quantity` 지정 시 부분 수량 차감·남은 양 기록, 미지정 또는 0 남김 시 `CONSUMED` 전환, `note` 선택) | `MEMBER`+ |
 | `POST` | `/households/{household_id}/items/{item_id}/discard` | 폐기 처리 (`DISCARDED` 전환) | `MEMBER`+ |
 | `DELETE` | `/households/{household_id}/items/{item_id}` | 오등록 품목 영구 삭제 | `MEMBER`+ |
 
@@ -96,7 +97,9 @@
   "unit": "팩",
   "expiry_date": "2026-11-26",
   "expiry_type": "USE_BY",
-  "memo": "행사 상품 1+1"
+  "memo": "행사 상품 1+1",
+  "detail_image_key": "households/1/items/20261121/uuid_detail.webp",
+  "thumb_image_key": "households/1/items/20261121/uuid_thumb.webp"
 }
 ```
 
@@ -116,6 +119,30 @@
   "d_day": 7,
   "status": "ACTIVE",
   "memo": "행사 상품 1+1",
+  "detail_image_url": "https://objectstorage.../uuid_detail.webp",
+  "thumb_image_url": "https://objectstorage.../uuid_thumb.webp",
   "updated_at": "2026-11-19T18:30:00Z"
 }
 ```
+
+### 품목 소비 및 남은 양 기록 (`POST /households/{household_id}/items/{item_id}/consume`)
+**Request** (`amount` 또는 `remaining_quantity` 중 하나만 전달, 둘 다 생략 시 전량 소비):
+```json
+{
+  "remaining_quantity": 0.5,
+  "note": "반만 먹고 지퍼백 보관"
+}
+```
+
+**Response (`200 OK`)**:
+- `remaining_quantity > 0`인 경우 `status`는 `"ACTIVE"`로 유지되며 `quantity`가 `0.5`로 갱신됩니다.
+- `activity_logs`에는 `consumed`, `remaining`, `unit`, `note`(선택)가 함께 기록됩니다.
+
+---
+
+## 변경 이력
+
+| 날짜 | 변경 내용 | 주요 파일 |
+|---|---|---|
+| 2026-11-21 | 품목 사진 2단계 WebP(`detail` + `thumb`) 업로드를 위한 `/items/photo-upload-url` 엔드포인트 및 품목 등록 요청/응답 이미지 필드(`detail_image_key`, `thumb_image_key`, `detail_image_url`, `thumb_image_url`) 추가 | `docs/02-architecture/04-api-spec.md` |
+| 2026-11-21 | `/items/{item_id}/consume` 요청 스펙에 남은 양 직접 기록(`remaining_quantity`) 및 소비 메모(`note`) 필드 추가 | `docs/02-architecture/04-api-spec.md` |

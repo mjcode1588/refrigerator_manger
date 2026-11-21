@@ -124,10 +124,20 @@ def test_items_crud_consume_discard_expiring_and_activity_logs(client: TestClien
     ).json()
     assert [it["id"] for it in expiring] == [milk["id"]]
 
-    # Partial consume milk: 2 -> 1
+    # Partial consume milk by remaining_quantity + note: 2 -> 1.5
+    c0 = client.post(
+        f"/api/v1/households/{hh_id}/items/{milk['id']}/consume",
+        json={"remaining_quantity": 1.5, "note": "아침 시리얼에 반 팩 사용"},
+        headers=headers,
+    ).json()
+    assert c0["quantity"] == 1.5
+    assert c0["status"] == "ACTIVE"
+    assert c0["memo"] == "아침 시리얼에 반 팩 사용"
+
+    # Partial consume milk by amount: 1.5 -> 1.0
     c1 = client.post(
         f"/api/v1/households/{hh_id}/items/{milk['id']}/consume",
-        json={"amount": 1},
+        json={"amount": 0.5},
         headers=headers,
     ).json()
     assert c1["quantity"] == 1.0

@@ -25,7 +25,8 @@
 | **Compute VM** | `VM.Standard.E2.1.Micro` (AMD 1/8 OCPU, 1GB RAM + 2GB Swap) 또는 `VM.Standard.A1.Flex` (ARM Ampere, 1~2 OCPU / 6~12GB RAM) | FastAPI 서버 + Caddy(HTTPS) 실행 (OS: Oracle Linux 9, `opc` 계정) | Boot Volume 50GB 이하 유지 (현재 46.6GB, 총 Block Volume 무료 한도 200GB). `ap-tokyo-1` 리전 `A1.Flex` 재고 부족 시 `E2.1.Micro` 우선 사용 |
 | **VCN / Subnet** | VCN `RefriManager` (`10.0.0.0/16`), Public Subnet (`10.0.0.0/24`), Internet Gateway 1개 | 외부 HTTP/HTTPS(80, 443) 및 SSH(22) 인바운드, 외부 DB/OAuth 아웃바운드 | NAT Gateway는 유료이므로 사용 금지. OS `firewalld`에서도 `http`/`https` 개방 필수 |
 | **Reverse Proxy** | VM 내부 Caddy (Let's Encrypt 자동 TLS) | 무료 HTTPS 종단 | 유료 OCI Load Balancer 대체 |
-| **Outbound Data** | 월 10TB 무료 | API JSON 트래픽 및 외부 DB 통신 | 1차 버전에서는 이미지 업로드 배제로 트래픽 최소화 |
+| **Object Storage** | **OCI Object Storage (Always Free 20GB)** | 품목 상세(`1280px`)·썸네일(`400px`) WebP 이미지 저장 | Pre-signed URL(PAR) 직전송으로 1GB RAM VM 부하 우회. 미연동 시 VM 볼륨(`/data/media`) + Caddy 정적 서빙 대안 사용 |
+| **Outbound Data** | 월 10TB 무료 | API JSON 트래픽, 외부 DB 통신 및 이미지 서빙 | 클라이언트 WebP 2단계 압축으로 트래픽 최소화 |
 
 ---
 
@@ -63,8 +64,16 @@ flowchart LR
 2. **Supabase IPv4/IPv6 및 Connection Pooler 주의**:
    - OCI Compute VM 기본 환경이 IPv4 전용인 경우, Supabase Direct Connection(IPv6 전용인 경우 있음) 대신 **Supavisor Session/Transaction Pooler(IPv4 지원)** URL을 사용해야 합니다.
    - Transaction Pooler(`6543`) 사용 시 SQLAlchemy/psycopg의 Prepared Statement 충돌을 방지하기 위해 `prepare_threshold=None` (또는 Session Pooler `5432`) 설정을 적용합니다.
-3. **스토리지 한도 관리 (특히 Supabase 500MB 기준)**:
-   - 품목 이미지 바이너리는 DB에 저장하지 않으며, `activity_logs` 변경 이력은 90~180일 보관 후 오래된 로그를 정리하는 배치/정책을 둡니다.
+3. **스토리지 한도 및 이미지 용량 관리 (1GB RAM VM · 무료 티어 보호)**:
+   - 품목 이미지 바이너리는 DB에 절대 저장하지 않으며(`items` 테이블에는 `detail_image_key` / `thumb_image_key` 키만 저장), 실제 파일은 **OCI Object Storage (Always Free 20GB)** 또는 VM 내 상한 격리 디렉토리(`/data/media`)에 저장합니다.
+   - **클라이언트 선(先)압축 필수**: 1GB RAM VM의 OOM 방지를 위해 리사이징·WebP 인코딩은 반드시 Android 앱에서 수행합니다.
+     - 상세페이지용(`detail`): 긴 변 `1280px`, WebP(품질 80%), 서버 업로드 상한 **`500KB`**
+     - 목록 카드용(`thumb`): 긴 변 `400px`, WebP(품질 72%), 서버 업로드 상한 **`100KB`**
+   - **계층형 수명주기(Tiered TTL) 자동 정리**:
+     - `ACTIVE`(보관 중): `detail` + `thumb` 모두 유지
+     - `CONSUMED`(소비) / `DISCARDED`(폐기) 후 **30일 경과**: 고해상도 `detail` 이미지 자동 삭제(이력 확인용 `thumb`만 유지하거나 정책에 따라 일괄 삭제)
+     - 품목 영구 삭제(`DELETE`): 연결된 이미지 즉시 삭제
+   - `activity_logs` 변경 이력은 90~180일 보관 후 오래된 로그를 정리하는 배치/정책을 둡니다.
 4. **Compute VM 유휴 회수 및 빠른 복구**:
    - 서버 실행 환경은 Docker Compose(`server/compose.prod.yml`)로 코드화하여 VM 재생성 시 10분 내 복구 가능하게 유지합니다.
 
@@ -86,3 +95,4 @@ flowchart LR
 | 날짜 | 변경 내용 | 주요 파일 |
 |---|---|---|
 | 2026-11-21 | 실제 생성된 OCI 리소스(`ap-tokyo-1`, VCN `RefriManager`, `VM.Standard.E2.1.Micro` / Oracle Linux 9) 및 2단계 DB 전환·CI/CD 구성 반영 | `docs/02-architecture/02-oci-always-free-infra.md` |
+| 2026-11-21 | 품목 사진 등록·상세페이지 조회를 위한 2단계 WebP 규격(`detail 1280px` + `thumb 400px`), OCI Object Storage(20GB Always Free)/Pre-signed URL 및 소비·폐기 후 30일 TTL 정리 정책 반영 | `docs/02-architecture/02-oci-always-free-infra.md` |

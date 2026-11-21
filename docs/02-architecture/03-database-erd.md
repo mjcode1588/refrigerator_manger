@@ -1,7 +1,7 @@
 # 03. 데이터베이스 설계 (DB 벤더 중립 ERD 및 호환성 가이드)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-19  
+> **최종 수정일**: 2026-11-21  
 > **관련 문서**: [전체 시스템 아키텍처](./01-system-architecture.md), [보관 장소 및 재고 명세](../03-features/02-storage-and-inventory.md)
 
 ---
@@ -107,6 +107,8 @@ erDiagram
         VARCHAR expiry_type
         VARCHAR status
         VARCHAR memo
+        VARCHAR detail_image_key
+        VARCHAR thumb_image_key
         BIGINT created_by FK
         BIGINT updated_by FK
         TIMESTAMPTZ created_at
@@ -164,6 +166,7 @@ erDiagram
 - `items.category`: `FRESH`, `MEAT_FISH`, `DAIRY`, `PROCESSED`, `BEVERAGE`, `SAUCE`, `ETC`
 - `items.expiry_type`: `USE_BY` | `BEST_BEFORE` | `NONE`
 - `items.status`: `ACTIVE` | `CONSUMED` | `DISCARDED`
+- `items.detail_image_key` / `items.thumb_image_key` (Nullable): DB에 이미지 바이너리를 저장하지 않고, OCI Object Storage(또는 `/data/media`) 오브젝트 키만 보관합니다. `CONSUMED`/`DISCARDED` 전환 후 30일이 지난 품목의 `detail_image_key`는 배치/TTL 정책에 의해 정리(`NULL` 초기화 및 오브젝트 삭제)됩니다.
 - `activity_logs`: `entity_type`(`ITEM`|`LOCATION`|`MEMBER`), `action_type`(`CREATED`|`UPDATED`|`MOVED`|`CONSUMED`|`DISCARDED`|`DELETED`|`JOINED`), `detail_json` 저장.
 
 ---
@@ -176,3 +179,11 @@ erDiagram
 | `items` | `(household_id, status, expiry_date)` | 임박/만료 품목 조회 및 WorkManager 동기화 |
 | `items` | `(household_id, location_id, status)` | 특정 보관 장소 내 재고 목록 조회 |
 | `activity_logs` | `(household_id, created_at)` | 가구별 최신 변경 이력 조회 |
+
+---
+
+## 변경 이력
+
+| 날짜 | 변경 내용 | 주요 파일 |
+|---|---|---|
+| 2026-11-21 | `items` 테이블에 외부 스토리지 연동용 `detail_image_key`, `thumb_image_key` 컬럼 추가 (이미지 바이너리 DB 미저장 및 TTL 정리 정책 반영) | `docs/02-architecture/03-database-erd.md` |

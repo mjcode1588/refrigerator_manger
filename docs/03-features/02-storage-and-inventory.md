@@ -52,10 +52,18 @@
 | `expiry_date` | X | 유통기한 또는 소비기한 (`YYYY-MM-DD`) |
 | `expiry_type` | O | `USE_BY`(소비기한), `BEST_BEFORE`(유통기한), `NONE`(기한 없음) |
 | `memo` | X | 구매처, 개봉일, 보관 팁 등 자유 메모 |
+| `detail_image_key` / `thumb_image_key` | X | 상세보기용(`1280px` WebP, ≤500KB) 및 목록 카드용(`400px` WebP, ≤100KB) 이미지 키 (클라이언트 압축 업로드, 소비·폐기 후 30일 경과 시 `detail` 자동 정리) |
 
-### 2.2 빠른 재고 액션 (모바일 UX 최적화)
+### 2.2 빠른 재고 액션 및 상세정보 조회 (모바일 UX 최적화)
+- **식재료 상세정보 창(모달 바텀시트)**: 리스트 내 식재료 카드를 클릭하면 카테고리·D-Day 상태 배지, 현재 보유 수량(`-`/`+` 스테퍼), 먹고 남긴 양 기록, 보관 장소 전체 경로(브레드크럼) 및 `장소 이동`, 기한 정보(유형·날짜·임박 진행 바), 메모, `폐기`·`소비 완료` 액션을 한눈에 확인·조작할 수 있는 상세정보 바텀시트를 제공.
+- **남은 양 프로그레스 바**: 리스트 카드 내 보관 장소/메모 아래에 기준 수량 대비 현재 남은 양(`현재 / 기준 단위 · 퍼센트%`)과 상태별 색상 진행 바(충분 `#00685F`, 절반 이하 `#D97706`, 25% 이하 `#DC2626`)를 시각화.
 - **빠른 수량 조절**: 리스트 카드에서 `-` / `+` 버튼으로 수량을 즉시 조정 (수량이 `0`이 되면 "소비 완료 처리할까요?" 스낵바/팝업 제안).
-- **부분 소비 / 전량 소비**: 예) `우유 2팩` 중 `1팩` 소비 시 수량만 `1팩`으로 차감하고 이력에 기록; 전량 소비 시 `status = CONSUMED`로 전환.
+- **부분 소비 및 남은 양 기록 (상세정보 바텀시트 통합)**:
+  - 리스트 카드의 `소비` 버튼 또는 카드 클릭으로 **식재료 상세정보 및 소비 기록 통합 바텀시트**를 열어, 현재 보유 수량 스테퍼 바로 아래 인라인 영역에서 먹은 양과 남은 양을 함께 기록할 수 있음.
+  - **빠른 비율 프리셋**: `1/4 먹음 (75% 남음)`, `절반 먹음 (50% 남음)`, `3/4 먹음 (25% 남음)`, `전부 먹음 (소비 완료)` 원터치 선택 지원.
+  - **먹은 양 ↔ 남은 양 양방향 연동 입력**: 소수점(`0.5개`, `1.5팩`, `250g` 등)을 포함해 `먹은 양` 또는 `남은 양` 중 편한 쪽을 입력하면 나머지 값이 자동 계산됨.
+  - **선택적 소비/보관 메모**: 예) `"반만 쓰고 지퍼백 보관"` 같은 한 줄 메모를 함께 남기면 변경 이력(`activity_logs`)에 기록됨.
+  - 부분 소비 시 수량만 차감(`ACTIVE` 유지)되며, 남은 양이 `0`이 되거나 전량 소비 시 `status = CONSUMED`로 전환.
 - **폐기 처리**: 상했거나 기한이 지나 버린 품목은 `status = DISCARDED`로 처리하여 소비와 구분.
 - **보관 장소 이동**: 예) 냉장실에 있던 고기를 냉동실로 옮길 때 트리 피커(Picker)로 1~2탭 만에 이동.
 
@@ -71,3 +79,8 @@
 | 날짜 | 변경 내용 | 주요 파일 |
 |---|---|---|
 | 2026-11-21 | Android 전량 소비(`consumeItem`) 호출 시 Retrofit `@Body` null 전달 오류 수정 및 소비·폐기 완료 스낵바 피드백 추가 | `android/app/src/main/java/com/fridge/manager/core/network/ApiService.kt`, `android/app/src/main/java/com/fridge/manager/data/repository/FridgeRepository.kt`, `android/app/src/main/java/com/fridge/manager/ui/main/MainViewModel.kt` |
+| 2026-11-21 | 식재료 카드 클릭 시 상세정보 모달 바텀시트(`FoodItemDetailSheetContent`) 표시 명세 및 Android UI 구현 반영 | `android/app/src/main/java/com/fridge/manager/ui/screens/InventoryScreen.kt`, `docs/04-guides/05-ui-design-guidelines.md` |
+| 2026-11-21 | `재고·장소 관리` 품목 카드(`FreshItemCard`)에 기준 수량 대비 남은 양 프로그레스 바 및 퍼센트 표시 구현 | `android/app/src/main/java/com/fridge/manager/ui/screens/InventoryScreen.kt`, `docs/04-guides/05-ui-design-guidelines.md` |
+| 2026-11-21 | 품목 속성에 2단계 WebP 사진(`detail_image_key`, `thumb_image_key`) 및 클라이언트 압축·TTL 정리 정책 추가 | `docs/03-features/02-storage-and-inventory.md` |
+| 2026-11-21 | 부분 소비 및 남은 양 기록(빠른 비율 프리셋, 먹은 양↔남은 양 양방향 입력, 소비/보관 메모) 기능 명세 추가 | `docs/03-features/02-storage-and-inventory.md` |
+| 2026-11-21 | 상세정보 바텀시트와 소비·남은 양 기록 UI를 단일 통합 바텀시트로 통합 반영 | `docs/03-features/02-storage-and-inventory.md` |

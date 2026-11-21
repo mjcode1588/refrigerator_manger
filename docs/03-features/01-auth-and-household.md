@@ -9,7 +9,7 @@
 ## 1. 소셜 로그인 및 JWT 인증
 
 ### 1.1 지원 제공자 및 검증 흐름
-- **단일 소셜 로그인 정책**: 운영 환경의 로그인은 **Kakao(카카오톡/카카오계정) 단일 제공자**만 지원합니다. (Google 로그인은 비활성화/제거하며, `/auth/dev-login`은 `APP_ENV=local` 개발 환경에서만 허용합니다.)
+- **단일 소셜 로그인 정책**: 운영 환경의 로그인은 **Kakao(카카오톡/카카오계정) 단일 제공자**만 지원합니다. (Google 로그인 버튼은 제거하며, 카카오 SDK 연동 전까지 `카카오로 시작하기` 버튼은 동작하지 않는 플레이스홀더로 유지합니다. 체험 로그인 `/auth/dev-login`은 `ALLOW_DEV_LOGIN=true` 설정으로 제어합니다.)
 - **Kakao 로그인 흐름**: Android Kakao SDK로 획득한 `access_token`을 FastAPI(`POST /api/v1/auth/social/kakao`)로 전달 → 백엔드에서 Kakao 사용자 정보 API(`https://kapi.kakao.com/v2/user/me`) 호출하여 `id`, 닉네임, 이메일 확인.
 - 최초 로그인 시 `USERS` 및 `SOCIAL_ACCOUNTS` 레코드를 자동 생성하며, 별도의 회원가입 폼 없이 즉시 진입합니다.
 
@@ -101,3 +101,4 @@
 |---|---|---|
 | 2026-11-21 | 운영 로그인 제공자를 Kakao 단일로 변경하고 카카오톡 로그인 구현 체크리스트(Kakao Developers·Android·FastAPI) 추가 | `docs/03-features/01-auth-and-household.md` |
 | 2026-11-21 | `/health` 점검 모드·최소 앱 버전 필드 추가, 4초 짧은 헬스체크 타임아웃 및 재방문 사용자 오프라인 우선 진입 구현 | `docs/03-features/01-auth-and-household.md`, `server/app/core/config.py`, `server/app/main.py`, `android/...` |
+| 2026-11-21 | Google 로그인 버튼 제거, `카카오로 시작하기` 버튼 임시 무반응 처리, `/auth/dev-login` 404 해소를 위해 `ALLOW_DEV_LOGIN` 설정 도입 (`true` 기본값) | `docs/03-features/01-auth-and-household.md`, `server/app/core/config.py`, `server/app/api/routers/auth.py`, `android/app/src/main/java/com/fridge/manager/ui/screens/AuthOnboardingScreen.kt` |

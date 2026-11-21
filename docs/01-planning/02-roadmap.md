@@ -15,7 +15,8 @@ flowchart LR
     M2 --> M3["Phase 3\n웹 프론트 기능 실험"]
     M3 --> M3_5["Phase 3.5\nUI/UX 디자인 (Stitch MCP)"]
     M3_5 --> M4["Phase 4\nAndroid 앱 개발"]
-    M4 --> M5["Phase 5\n통합 테스트 & 실사용 배포"]
+    M4 --> M4_5["Phase 4.5\n사진 등록·스토리지 연동"]
+    M4_5 --> M5["Phase 5\n통합 테스트 & 실사용 배포"]
 ```
 
 ---
@@ -61,6 +62,13 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - [x] **로컬 캐시 & 알림**: Room 캐시 동기화 및 `WorkManager` 기반 유통기한 임박 로컬 알림 스케줄러 구현
 - [x] **가족 & 변경 이력 UI**: 초대 코드 발급·복사, 최근 변경 이력 타임라인, 로컬 알림 기준일(D-1/3/5/7)·시간 설정
 
+### Phase 4.5: 품목 사진 등록·상세조회 및 경량 스토리지 연동
+서버 스토리지 및 1GB RAM VM 제약을 고려해 **2단계 WebP 압축(상세 1280px / 썸네일 400px)**과 **외부 스토리지(OCI Object Storage) + 상태 기반 TTL 정리**를 적용한 사진 등록 기능을 구현합니다.
+- [x] **Stitch MCP 시안 개편**: `새 품목 등록 (바텀시트)` 상단 `사진으로 등록` 섹션(카메라/앨범, 식재료·영수증·바코드 모드, 프리뷰 카드) 반영
+- [x] **설계 문서 확정**: 인프라(`02-oci-always-free-infra.md`), ERD(`03-database-erd.md`), API(`04-api-spec.md`), 기능 명세(`02-storage-and-inventory.md`) 업데이트
+- [ ] **백엔드(`server/`) 구현**: `items` 테이블 `detail_image_key`/`thumb_image_key` Alembic 마이그레이션, `/items/photo-upload-url` Pre-signed URL(또는 `/data/media` 대안) 발급 API, 크기 상한(`500KB`/`100KB`) 검증 및 소비·폐기 후 30일 `detail` 정리 배치 + `pytest` 검증
+- [ ] **Android(`android/`) 구현**: 카메라/앨범 선택 및 클라이언트 2단계 WebP 압축(`1280px`/`400px`), `새 품목 등록` 바텀시트 사진 등록·프리뷰 UI, 목록 썸네일 및 품목 상세페이지 고해상도 이미지 조회 구현 + 단위/빌드 테스트
+
 ### Phase 5: 통합 테스트, 안정화 및 실사용 배포
 - [ ] Android ↔ OCI FastAPI ↔ 선택 DB(Oracle ADB / Supabase) 종단간(E2E) 연동 검증
 - [ ] 네트워크 오프라인/지연 상황에서의 Room 캐시 폴백 및 에러 처리 검증
@@ -82,3 +90,4 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - **2026-11-21**: Stitch 확정 시안(`Fresh Kitchen Material`) 기반 Android Jetpack Compose UI 구현 완료 (`Theme.kt`, `AuthOnboardingScreen.kt`, `InventoryScreen.kt`, `FamilyAndSettingsScreen.kt`, `MainActivity.kt`) 및 `testDebugUnitTest` 통과.
 - **2026-11-21**: 백엔드 `pytest` 9건 전체 통과 확인; Android 품목 보관 장소 이동(`moveItem`) 및 상단 가구 스위처(`switchHousehold`) 추가 후 `testDebugUnitTest` 통과.
 - **2026-11-21**: `SM_S911N` 실기기 디버그 APK 설치(`app-debug.apk`), `adb reverse tcp:8080 tcp:8080` 포트 포워딩, FastAPI(`127.0.0.1:8080`) 라이브 E2E API 스모크 테스트(`LIVE_E2E_OK`) 및 `ruff check` 통과 확인.
+- **2026-11-21**: **Phase 4.5 (품목 사진 등록·상세조회 및 경량 스토리지 연동)** 신설 — Stitch MCP 시안·설계 문서 완료 체크 및 백엔드(`server/`)·Android(`android/`) 구현 항목 등록.
