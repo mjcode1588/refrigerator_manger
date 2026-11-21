@@ -53,6 +53,9 @@ def create_app() -> FastAPI:
             content={
                 "status": "healthy",
                 "db_provider": db_provider.value,
+                "maintenance": settings.maintenance_mode,
+                "maintenance_message": settings.maintenance_message,
+                "min_android_version_code": settings.min_android_version_code,
             },
         )
 

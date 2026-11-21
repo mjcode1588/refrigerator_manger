@@ -1,7 +1,7 @@
 # 02. 보관 장소(자유 트리) 및 재고 관리 명세
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-19  
+> **최종 수정일**: 2026-11-21  
 > **관련 문서**: [DB ERD](../02-architecture/03-database-erd.md), [REST API 명세](../02-architecture/04-api-spec.md)
 
 ---
@@ -63,3 +63,11 @@
 - **검색**: 품목명 및 메모 키워드 검색 (Room 로컬 캐시 기반 즉시 필터링 + 서버 검색).
 - **필터**: 보관 장소(하위 포함), 카테고리, 상태(`보관 중` / `소비 완료` / `폐기`), 기한 상태(`만료` / `임박` / `여유` / `기한 없음`).
 - **정렬**: 유통기한 임박순(기본값, 기한 없는 품목은 하단 배치), 최근 등록순, 이름순.
+
+---
+
+## 변경 이력
+
+| 날짜 | 변경 내용 | 주요 파일 |
+|---|---|---|
+| 2026-11-21 | Android 전량 소비(`consumeItem`) 호출 시 Retrofit `@Body` null 전달 오류 수정 및 소비·폐기 완료 스낵바 피드백 추가 | `android/app/src/main/java/com/fridge/manager/core/network/ApiService.kt`, `android/app/src/main/java/com/fridge/manager/data/repository/FridgeRepository.kt`, `android/app/src/main/java/com/fridge/manager/ui/main/MainViewModel.kt` |

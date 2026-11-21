@@ -123,7 +123,13 @@ def test_all_tables_created_and_tree_crud_works(db_session: Session) -> None:
 def test_health_endpoint(client: TestClient) -> None:
     response = client.get("/api/v1/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "healthy", "db_provider": "sqlite"}
+    assert response.json() == {
+        "status": "healthy",
+        "db_provider": "sqlite",
+        "maintenance": False,
+        "maintenance_message": None,
+        "min_android_version_code": 1,
+    }
 
 
 def test_web_prototype_served(client: TestClient) -> None:

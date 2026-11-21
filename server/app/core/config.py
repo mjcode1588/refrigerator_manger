@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     google_client_id: str | None = None
     kakao_rest_api_key: str | None = None
 
+    # 점검 모드 및 최소 앱 버전
+    maintenance_mode: bool = False
+    maintenance_message: str | None = None
+    min_android_version_code: int = 1
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
