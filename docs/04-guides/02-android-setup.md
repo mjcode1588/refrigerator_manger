@@ -1,7 +1,7 @@
 # 02. Android 앱 개발 가이드 (Kotlin + Compose + Room + WorkManager)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-19  
+> **최종 수정일**: 2026-11-21  
 > **관련 문서**: [전체 시스템 아키텍처](../02-architecture/01-system-architecture.md), [유통기한 로컬 알림 명세](../03-features/03-expiry-notification.md)
 
 ---
@@ -61,10 +61,27 @@ app/src/main/java/com/fridge/manager/
 
 ## 4. 빌드 환경 및 보안 설정
 
-- `local.properties`에 아래 민감 키를 보관하고 `BuildConfig`로 주입합니다 (Git 커밋 금지):
+- `local.properties`에 아래 민감 키를 보관하고 `BuildConfig`로 주입합니다 (루트 `.gitignore`에 `android/local.properties`, `android/.gradle/`, `android/.kotlin/`을 등록해 Git 커밋을 원천 차단):
   ```properties
   API_BASE_URL=https://api.yourdomain.duckdns.org/api/v1/
-  GOOGLE_WEB_CLIENT_ID=...
   KAKAO_NATIVE_APP_KEY=...
   ```
 - **최소 지원 SDK**: `minSdk = 26` (Android 8.0, Notification Channel 및 `java.time` 기본 지원), `targetSdk = 35`.
+- **빌드 유형별 네트워크 보안 (`network_security_config.xml`)**:
+  - `AndroidManifest.xml`에서 전역 `android:usesCleartextTraffic="true"`를 제거합니다.
+  - `src/main/res/xml/network_security_config.xml`에서는 기본적으로 평문 HTTP를 차단(`cleartextTrafficPermitted="false"`)하여 `release` APK에서 HTTPS만 허용하고, `src/debug/res/xml/network_security_config.xml`에서만 로컬 에뮬레이터(`10.0.2.2`, `127.0.0.1`) 및 개발 서버 도메인의 HTTP 통신을 예외 허용합니다.
+- **클라우드/ADB 백업을 통한 토큰·DB 유출 차단**:
+  - `AndroidManifest.xml`에서 `android:allowBackup="false"`를 적용하거나, `data_extraction_rules.xml` 및 `backup_rules.xml`을 지정하여 인증 토큰 저장소(`auth_prefs.preferences_pb`)와 로컬 Room DB(`fridge_manager.db`)가 클라우드 자동 백업 및 `adb backup`으로 추출되지 않도록 제외합니다.
+- **로그아웃 시 완전한 세션·로컬 데이터 정리**:
+  - 로그아웃 시 ① 서버 `POST /api/v1/auth/logout` 호출로 Refresh Token 폐기 → ② 로컬 `TokenStorage.clear()` → ③ Room DB(`items`, `storage_locations`) 전체 초기화(`clearAllTables`) → ④ `ExpiryCheckWorker.cancel()`을 순차 수행하여 다중 계정 전환 시 이전 사용자 데이터 잔류 및 알림 오발송을 방지합니다.
+- **네트워크 디버그 로그 마스킹 및 R8/ProGuard 규칙 (`proguard-rules.pro`)**:
+  - `BuildConfig.DEBUG`에서 `HttpLoggingInterceptor`를 사용할 때 `redactHeader("Authorization")`을 설정해 Logcat에 JWT가 평문 출력되지 않도록 마스킹합니다.
+  - `release` 빌드(`isMinifyEnabled = true`) 시 난독화로 인한 런타임 크래시를 방지하기 위해 `android/app/proguard-rules.pro`에 `kotlinx.serialization`(`@Serializable` DTO) 및 `Retrofit2` 인터페이스 Keep 규칙을 명시합니다.
+
+---
+
+## 변경 이력
+
+| 날짜 | 변경 내용 | 주요 파일 |
+|---|---|---|
+| 2026-11-21 | APK 보안 하드닝 지침 추가 — `network_security_config.xml` 기반 Release HTTPS 강제, 백업(`allowBackup`/`data_extraction_rules`) 토큰·DB 제외, 로그아웃 시 서버 토큰 폐기 및 Room·WorkManager 초기화, `Authorization` 로그 마스킹, `proguard-rules.pro` 및 `.gitignore` 규칙 명시 | `docs/04-guides/02-android-setup.md` |

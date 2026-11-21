@@ -66,10 +66,19 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 서버 스토리지 및 1GB RAM VM 제약을 고려해 **2단계 WebP 압축(상세 1280px / 썸네일 400px)**과 **외부 스토리지(OCI Object Storage) + 상태 기반 TTL 정리**를 적용한 사진 등록 기능을 구현합니다.
 - [x] **Stitch MCP 시안 개편**: `새 품목 등록 (바텀시트)` 상단 `사진으로 등록` 섹션(카메라/앨범, 식재료·영수증·바코드 모드, 프리뷰 카드) 반영
 - [x] **설계 문서 확정**: 인프라(`02-oci-always-free-infra.md`), ERD(`03-database-erd.md`), API(`04-api-spec.md`), 기능 명세(`02-storage-and-inventory.md`) 업데이트
-- [ ] **백엔드(`server/`) 구현**: `items` 테이블 `detail_image_key`/`thumb_image_key` Alembic 마이그레이션, `/items/photo-upload-url` Pre-signed URL(또는 `/data/media` 대안) 발급 API, 크기 상한(`500KB`/`100KB`) 검증 및 소비·폐기 후 30일 `detail` 정리 배치 + `pytest` 검증
-- [ ] **Android(`android/`) 구현**: 카메라/앨범 선택 및 클라이언트 2단계 WebP 압축(`1280px`/`400px`), `새 품목 등록` 바텀시트 사진 등록·프리뷰 UI, 목록 썸네일 및 품목 상세페이지 고해상도 이미지 조회 구현 + 단위/빌드 테스트
+- [x] **백엔드(`server/`) 구현**: `items` 테이블 `detail_image_key`/`thumb_image_key` Alembic 마이그레이션, `/items/photo-upload-url` Pre-signed URL(또는 `/data/media` 대안) 발급 API, 크기 상한(`500KB`/`100KB`) 검증 및 소비·폐기 후 30일 `detail` 정리 배치 + `pytest` 검증
+- [x] **Android(`android/`) 구현**: 카메라/앨범 선택 및 클라이언트 2단계 WebP 압축(`1280px`/`400px`), `새 품목 등록` 바텀시트 사진 등록·프리뷰 UI, 목록 썸네일 및 품목 상세페이지 고해상도 이미지 조회 구현 + 단위/빌드 테스트
 
-### Phase 5: 통합 테스트, 안정화 및 실사용 배포
+### Phase 5: 통합 테스트, 보안 하드닝 및 실사용 배포
+- [ ] **백엔드 보안 하드닝 (`server/`)**:
+  - [ ] 운영 환경(`APP_ENV != "local"`) 기동 시 기본/약한 `JWT_SECRET_KEY` 및 `ALLOW_DEV_LOGIN=true` 차단(Fail-Fast 검증)
+  - [ ] `POST /auth/logout` Refresh Token 소유권(`user_id`) 검증 및 `POST /auth/refresh` 폐기 토큰 재사용 탈취 감지(Reuse Detection)
+  - [ ] `POST /households/join` 원자적 `used_count` 차감(동시 참여 경합 방지) 및 `/auth/*`·`/households/join` Rate Limiting(`429`) 적용
+  - [ ] `GET /api/v1/health` 실패 시 DB 내부 예외 문자열(`detail`) 미노출, Uvicorn `--forwarded-allow-ips` 제한 및 Caddy 보안 헤더/요청 크기 상한 적용
+- [ ] **Android APK 보안 하드닝 (`android/`)**:
+  - [ ] `network_security_config.xml` 분리(Debug 로컬 HTTP 허용 / Release HTTPS 강제) 및 `allowBackup="false"`(또는 백업 제외 규칙) 적용
+  - [ ] 로그아웃 시 서버 `/auth/logout` 호출 + `TokenStorage.clear()` + Room DB 초기화 + `ExpiryCheckWorker.cancel()` 일괄 정리
+  - [ ] `HttpLoggingInterceptor.redactHeader("Authorization")` 마스킹, `proguard-rules.pro` 직렬화/Retrofit 규칙 추가 및 `.gitignore`에 `android/local.properties` 등록
 - [ ] Android ↔ OCI FastAPI ↔ 선택 DB(Oracle ADB / Supabase) 종단간(E2E) 연동 검증
 - [ ] 네트워크 오프라인/지연 상황에서의 Room 캐시 폴백 및 에러 처리 검증
 - [ ] 무료 티어 리소스 사용량(CPU/RAM/DB 스토리지/트래픽) 및 7일 미사용 자동 중지/일시정지 대응 점검
@@ -91,3 +100,5 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - **2026-11-21**: 백엔드 `pytest` 9건 전체 통과 확인; Android 품목 보관 장소 이동(`moveItem`) 및 상단 가구 스위처(`switchHousehold`) 추가 후 `testDebugUnitTest` 통과.
 - **2026-11-21**: `SM_S911N` 실기기 디버그 APK 설치(`app-debug.apk`), `adb reverse tcp:8080 tcp:8080` 포트 포워딩, FastAPI(`127.0.0.1:8080`) 라이브 E2E API 스모크 테스트(`LIVE_E2E_OK`) 및 `ruff check` 통과 확인.
 - **2026-11-21**: **Phase 4.5 (품목 사진 등록·상세조회 및 경량 스토리지 연동)** 신설 — Stitch MCP 시안·설계 문서 완료 체크 및 백엔드(`server/`)·Android(`android/`) 구현 항목 등록.
+- **2026-11-21**: **Phase 4.5 백엔드·Android 구현 완료** — `detail_image_key`/`thumb_image_key` Alembic 마이그레이션(`0003_add_item_image_keys`), `/items/photo-upload-url` 및 미디어 업로드/서빙 API(`pytest` 10건 통과), Android 2단계 WebP 압축(`ImageCompressor`), 카메라·앨범 피커, 등록 프리뷰 및 목록 썸네일·상세 고해상도 이미지 조회 구현(`testDebugUnitTest` 통과).
+- **2026-11-21**: **Phase 5에 백엔드·Android APK 보안 하드닝 신규 요구사항 추가** — 기존 미구현 계획 항목을 제외하고 새롭게 도출된 보안 설계(운영 Fail-Fast 검증, 토큰 소유권·재사용 탈취 감지, 초대 코드 원자적 차감 및 Rate Limiting, `/health` 내부 예외 마스킹, `network_security_config.xml` Release HTTPS 강제, 백업 제외, 로그아웃 시 서버·Room·WorkManager 일괄 정리, 로그 헤더 마스킹 및 `proguard-rules.pro`)를 관련 문서 및 로드맵에 반영.

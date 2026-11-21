@@ -102,6 +102,7 @@ erDiagram
         VARCHAR name
         VARCHAR category
         DECIMAL quantity
+        DECIMAL initial_quantity
         VARCHAR unit
         DATE expiry_date
         VARCHAR expiry_type

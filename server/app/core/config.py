@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     maintenance_message: str | None = None
     min_android_version_code: int = 1
 
+    # 품목 이미지 스토리지 설정 (로컬 /data/media 또는 OCI Object Storage)
+    media_storage_dir: str = "./data/media"
+    media_public_base_url: str = ""
+    media_max_detail_bytes: int = 500 * 1024
+    media_max_thumb_bytes: int = 100 * 1024
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]

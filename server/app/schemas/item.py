@@ -73,6 +73,8 @@ class CreateItemRequest(BaseModel):
     expiry_date: date | None = None
     expiry_type: ExpiryType = ExpiryType.USE_BY
     memo: str | None = Field(default=None, max_length=500)
+    detail_image_key: str | None = Field(default=None, max_length=255)
+    thumb_image_key: str | None = Field(default=None, max_length=255)
 
     @field_validator("memo", mode="before")
     @classmethod
@@ -90,6 +92,9 @@ class UpdateItemRequest(BaseModel):
     clear_expiry_date: bool = False
     expiry_type: ExpiryType | None = None
     memo: str | None = Field(default=None, max_length=500)
+    detail_image_key: str | None = Field(default=None, max_length=255)
+    thumb_image_key: str | None = Field(default=None, max_length=255)
+    clear_images: bool = False
 
     @field_validator("memo", mode="before")
     @classmethod
@@ -122,6 +127,7 @@ class ItemResponse(BaseModel):
     name: str
     category: str
     quantity: float
+    initial_quantity: float
     unit: str
     expiry_date: date | None
     expiry_type: str
@@ -129,4 +135,30 @@ class ItemResponse(BaseModel):
     expiry_state: ExpiryState
     status: str
     memo: str | None
+    detail_image_key: str | None = None
+    thumb_image_key: str | None = None
+    detail_image_url: str | None = None
+    thumb_image_url: str | None = None
     updated_at: datetime
+
+
+class PhotoUploadUrlRequest(BaseModel):
+    detail_size_bytes: int = Field(gt=0, le=512000)
+    thumb_size_bytes: int = Field(gt=0, le=102400)
+    content_type: str = Field(default="image/webp")
+
+    @field_validator("content_type")
+    @classmethod
+    def validate_content_type(cls, v: str) -> str:
+        normalized = v.strip().lower()
+        if normalized != "image/webp":
+            raise ValueError("Only image/webp is supported")
+        return normalized
+
+
+class PhotoUploadUrlResponse(BaseModel):
+    detail_image_key: str
+    thumb_image_key: str
+    detail_upload_url: str
+    thumb_upload_url: str
+    expires_in_seconds: int = 300

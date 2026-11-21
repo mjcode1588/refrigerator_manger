@@ -82,3 +82,5 @@
 - **2026-11-21**: 확정된 Stitch `식재료 상세정보 (모달 바텀시트)` 시안을 Android `InventoryScreen.kt`(`FoodItemDetailSheetContent`, `FreshItemCard` 클릭 핸들러)에 반영하고 `testDebugUnitTest` 빌드·테스트 통과 확인.
 - **2026-11-21**: Stitch MCP `재고·장소 관리` 시안(`d0e355f039074e90b1937fca6d757af1`) 수정 — `식재료 상세정보 및 소비 기록 (통합 바텀시트)`의 먹고 남긴 양 기록과 연동되도록 각 품목 카드에 **남은 양 프로그레스 바**(`남은 양`, 잔여량/기준량·백분율 텍스트, 상태별 색상 바 `#00685F`·`#D97706`·`#DC2626`) 추가.
 - **2026-11-21**: 수정된 `재고·장소 관리` 시안의 **남은 양 프로그레스 바**를 Android `InventoryScreen.kt`(`FreshItemCard`, `SharedPreferences` 기반 품목별 기준 수량 `baselineQuantities` 추적)에 구현하고 `testDebugUnitTest` 빌드·테스트 통과 확인.
+- **2026-11-21**: 백엔드 `items.initial_quantity` 컬럼·Alembic 마이그레이션(`0002_add_item_initial_quantity`)·API 응답(`ItemResponse`) 및 Android `ItemDto`/`ItemEntity`/`FoodItem` 데이터 계층을 연동하여 기기 간 남은 양 프로그레스 바 기준 수량 동기화 완료 (`pytest` 9건 및 Android `testDebugUnitTest` 통과).
+- **2026-11-21**: 확정된 Stitch `새 품목 등록 (바텀시트)` 사진 등록 시안(`3a9fe1d84db44a4cbb99cf1bc164f131`)을 Android `InventoryScreen.kt`(사진 등록 섹션·카메라/앨범 피커·인식 모드 칩·2단계 WebP 프리뷰, 목록 썸네일, 상세 고해상도 이미지) 및 백엔드 미디어 API에 구현하고 `pytest`·`testDebugUnitTest` 통과 확인.

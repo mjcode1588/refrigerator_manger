@@ -26,11 +26,16 @@ class Item(Base, TimestampMixin):
     quantity: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, default=Decimal("1.00")
     )
+    initial_quantity: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=Decimal("1.00")
+    )
     unit: Mapped[str] = mapped_column(String(30), nullable=False, default="개")
     expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     expiry_type: Mapped[str] = mapped_column(String(20), nullable=False, default="USE_BY")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVE")
     memo: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    detail_image_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    thumb_image_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_by: Mapped[int] = mapped_column(
         BigIntPK, ForeignKey("users.id"), nullable=False
     )

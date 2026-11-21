@@ -6,10 +6,16 @@ import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Url
+import okhttp3.RequestBody
 
 interface ApiService {
+
+    @GET("health")
+    suspend fun getHealth(): HealthResponseDto
 
     @POST("auth/social/google")
     suspend fun loginWithGoogle(@Body body: SocialGoogleRequest): TokenResponseDto
@@ -76,6 +82,18 @@ interface ApiService {
         @Query("within_days") withinDays: Int = 7,
     ): List<ItemDto>
 
+    @POST("households/{householdId}/items/photo-upload-url")
+    suspend fun createPhotoUploadUrl(
+        @Path("householdId") householdId: Long,
+        @Body body: PhotoUploadUrlRequest,
+    ): PhotoUploadUrlResponse
+
+    @PUT
+    suspend fun uploadMediaBytes(
+        @Url uploadUrl: String,
+        @Body body: RequestBody,
+    )
+
     @POST("households/{householdId}/items")
     suspend fun createItem(
         @Path("householdId") householdId: Long,
@@ -93,7 +111,7 @@ interface ApiService {
     suspend fun consumeItem(
         @Path("householdId") householdId: Long,
         @Path("itemId") itemId: Long,
-        @Body body: ConsumeItemRequest? = null,
+        @Body body: ConsumeItemRequest = ConsumeItemRequest(),
     ): ItemDto
 
     @POST("households/{householdId}/items/{itemId}/discard")

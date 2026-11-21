@@ -17,11 +17,19 @@ from app.schemas.item import (
     ItemCategory,
     ItemResponse,
     ItemStatus,
+    PhotoUploadUrlRequest,
+    PhotoUploadUrlResponse,
     UpdateItemRequest,
     compute_expiry_meta,
 )
 from app.services.activity import record_activity
 from app.services.locations import build_location_paths, collect_descendant_ids
+from app.services.media import (
+    build_media_url,
+    build_upload_url,
+    delete_media_file,
+    generate_item_image_keys,
+)
 
 router = APIRouter(prefix="/households/{household_id}/items", tags=["items"])
 
@@ -52,6 +60,7 @@ def _to_item_response(
         name=item.name,
         category=item.category,
         quantity=float(item.quantity),
+        initial_quantity=float(item.initial_quantity),
         unit=item.unit,
         expiry_date=item.expiry_date,
         expiry_type=item.expiry_type,
@@ -59,6 +68,10 @@ def _to_item_response(
         expiry_state=expiry_state,
         status=item.status,
         memo=item.memo,
+        detail_image_key=item.detail_image_key,
+        thumb_image_key=item.thumb_image_key,
+        detail_image_url=build_media_url(item.detail_image_key),
+        thumb_image_url=build_media_url(item.thumb_image_key),
         updated_at=item.updated_at,
     )
 
@@ -138,6 +151,21 @@ def list_expiring_items(
     return [_to_item_response(it, paths, alert_days=within_days) for it in items]
 
 
+@router.post("/photo-upload-url", response_model=PhotoUploadUrlResponse)
+def create_photo_upload_url(
+    household_id: int,
+    body: PhotoUploadUrlRequest,
+    _member: HouseholdMember = Depends(get_household_membership),
+) -> PhotoUploadUrlResponse:
+    detail_key, thumb_key = generate_item_image_keys(household_id)
+    return PhotoUploadUrlResponse(
+        detail_image_key=detail_key,
+        thumb_image_key=thumb_key,
+        detail_upload_url=build_upload_url(detail_key),
+        thumb_upload_url=build_upload_url(thumb_key),
+    )
+
+
 @router.post("", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)
 def create_item(
     household_id: int,
@@ -155,11 +183,14 @@ def create_item(
         name=body.name.strip(),
         category=body.category.value,
         quantity=body.quantity,
+        initial_quantity=body.quantity,
         unit=body.unit.strip(),
         expiry_date=body.expiry_date,
         expiry_type=body.expiry_type.value,
         status=ItemStatus.ACTIVE.value,
         memo=body.memo,
+        detail_image_key=body.detail_image_key,
+        thumb_image_key=body.thumb_image_key,
         created_by=member.user_id,
         updated_by=member.user_id,
     )
@@ -218,6 +249,8 @@ def update_item(
         item.category = body.category.value
     if body.quantity is not None:
         item.quantity = body.quantity
+        if body.quantity > item.initial_quantity:
+            item.initial_quantity = body.quantity
     if body.unit is not None:
         item.unit = body.unit.strip()
     if body.clear_expiry_date:
@@ -228,6 +261,16 @@ def update_item(
         item.expiry_type = body.expiry_type.value
     if body.memo is not None or "memo" in body.model_fields_set:
         item.memo = body.memo
+    if body.clear_images:
+        delete_media_file(item.detail_image_key)
+        delete_media_file(item.thumb_image_key)
+        item.detail_image_key = None
+        item.thumb_image_key = None
+    else:
+        if body.detail_image_key is not None:
+            item.detail_image_key = body.detail_image_key
+        if body.thumb_image_key is not None:
+            item.thumb_image_key = body.thumb_image_key
     item.updated_by = member.user_id
 
     record_activity(

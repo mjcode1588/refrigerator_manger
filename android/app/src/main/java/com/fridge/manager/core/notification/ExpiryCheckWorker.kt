@@ -57,11 +57,16 @@ class ExpiryCheckWorker @AssistedInject constructor(
                     name = dto.name,
                     category = dto.category,
                     quantity = dto.quantity,
+                    initialQuantity = dto.initialQuantity ?: dto.quantity,
                     unit = dto.unit,
                     expiryDate = dto.expiryDate,
                     expiryType = dto.expiryType,
                     status = dto.status,
                     memo = dto.memo,
+                    detailImageKey = dto.detailImageKey,
+                    thumbImageKey = dto.thumbImageKey,
+                    detailImageUrl = dto.detailImageUrl,
+                    thumbImageUrl = dto.thumbImageUrl,
                     updatedAt = dto.updatedAt,
                 )
             }

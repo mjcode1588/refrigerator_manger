@@ -35,6 +35,7 @@ data class FoodItem(
     val name: String,
     val category: String,
     val quantity: Double,
+    val initialQuantity: Double = quantity,
     val unit: String,
     val expiryDate: String?,
     val expiryType: String,
@@ -42,6 +43,8 @@ data class FoodItem(
     val expiryState: ExpiryState,
     val status: String,
     val memo: String?,
+    val detailImageUrl: String? = null,
+    val thumbImageUrl: String? = null,
 )
 
 data class ActivityLogItem(

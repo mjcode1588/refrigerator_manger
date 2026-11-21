@@ -132,10 +132,18 @@ KAKAO_REST_API_KEY=<kakao-app-key>
   ```
 
 ### 5.4 운영 전환 전 보안 체크리스트
-테스트 단계(`SITE_ADDRESS=:80`)에서 실제 운영으로 전환하기 전에 아래 3가지를 반드시 적용합니다.
+테스트 단계(`SITE_ADDRESS=:80`)에서 실제 운영으로 전환하기 전에 아래 항목을 반드시 적용합니다.
 1. **HTTP → HTTPS 전환**: 무료 도메인(예: DuckDNS)을 VM 공인 IP에 연결하고, `server/.env`의 `SITE_ADDRESS`를 `:80`에서 실제 도메인(`api.yourdomain.duckdns.org`)으로 변경해 Caddy 자동 TLS(HTTPS)를 활성화합니다.
-2. **테스트용 비밀번호·Swagger 정리**: Docker PostgreSQL을 계속 사용할 경우 `POSTGRES_PASSWORD`를 `openssl rand -hex 16` 등 랜덤 값으로 교체하고, 운영 환경(`APP_ENV=production`)에서는 FastAPI `/docs`·`/openapi.json` 비활성화를 검토합니다.
-3. **OCI Autonomous DB ACL 제한**: One-Way TLS 사용 시 OCI ADB 콘솔의 **Access Control List(ACL)**에 반드시 Compute VM의 공인 IP만 허용 등록하여 외부 IP 접근을 차단합니다.
+2. **운영 환경(`APP_ENV=production`) 설정 Fail-Fast 강제 검증**:
+   - `APP_ENV != "local"`일 때 기본 `JWT_SECRET_KEY`(`"dev-insecure-secret-change-in-production"`) 또는 32바이트 미만의 약한 시크릿 키가 설정된 경우 서버 기동을 즉시 차단합니다.
+   - `APP_ENV == "production"`에서는 `ALLOW_DEV_LOGIN=false`를 강제하여 비밀번호 없는 체험 로그인(`/auth/dev-login`)이 운영 환경에 노출되지 않도록 차단합니다.
+3. **내부 예외 정보 및 API 문서 노출 차단**:
+   - `GET /api/v1/health` 실패(`503`) 시 DB 호스트·계정·쿼리 정보가 포함될 수 있는 `detail: str(exc)` 및 `db_provider`를 응답 본문에서 제거하고 서버 로그에만 기록합니다.
+   - `APP_ENV != "local"`에서는 FastAPI의 `/docs`, `/redoc`, `/api/v1/openapi.json` 엔드포인트를 비활성화합니다.
+4. **리버스 프록시(Caddy) 보안 헤더 및 Uvicorn 신뢰 프록시 제한**:
+   - `entrypoint.sh`의 Uvicorn `--forwarded-allow-ips`를 `'*'` 대신 Docker 내부 브리지 대역(또는 신뢰된 프록시 IP)으로 제한하여 `X-Forwarded-For` 위조를 방지합니다.
+   - `Caddyfile`에 기본 보안 헤더(`Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`)와 요청 본문 크기 상한(`request_body { max_size 2MB }`)을 적용합니다.
+5. **OCI Autonomous DB ACL 제한**: One-Way TLS 사용 시 OCI ADB 콘솔의 **Access Control List(ACL)**에 반드시 Compute VM의 공인 IP만 허용 등록하여 외부 IP 접근을 차단합니다.
 
 ---
 
@@ -158,3 +166,4 @@ KAKAO_REST_API_KEY=<kakao-app-key>
 | 날짜 | 변경 내용 | 주요 파일 |
 |---|---|---|
 | 2026-11-21 | OCI VM 배포 구성(`local-db` 테스트 ↔ OCI ADB 운영 전환), 운영 전환 전 보안 체크리스트 및 GitHub Actions 자동 배포 절차 추가 | `server/Dockerfile`, `server/entrypoint.sh`, `server/compose.prod.yml`, `server/Caddyfile`, `.github/workflows/deploy-server.yml`, `server/.env.example` |
+| 2026-11-21 | 운영 전환 전 보안 체크리스트 강화 — 운영 환경 `JWT_SECRET_KEY`·`ALLOW_DEV_LOGIN` Fail-Fast 검증, `/health` 내부 예외 미노출, Uvicorn 신뢰 프록시 IP 제한 및 Caddy 보안 헤더/요청 크기 상한 추가 | `docs/04-guides/01-backend-setup.md` |

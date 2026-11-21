@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.fridge.manager.core.datastore.NotificationPreferences
 import com.fridge.manager.core.datastore.NotificationSettings
 import com.fridge.manager.core.datastore.TokenStorage
+import com.fridge.manager.core.media.CompressedItemPhotos
 import com.fridge.manager.core.network.CreateItemRequest
 import com.fridge.manager.core.notification.ExpiryCheckWorker
 import com.fridge.manager.data.repository.FridgeRepository
+import com.fridge.manager.data.repository.ServerUnavailableException
 import com.fridge.manager.domain.model.ActivityLogItem
 import com.fridge.manager.domain.model.FoodItem
 import com.fridge.manager.domain.model.HouseholdInfo
@@ -74,16 +76,36 @@ class MainViewModel @Inject constructor(
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    private val _isLoginLoading = MutableStateFlow(false)
+    val isLoginLoading: StateFlow<Boolean> = _isLoginLoading.asStateFlow()
+
     fun clearMessage() {
         _message.value = null
     }
 
     fun devLogin(nickname: String) = viewModelScope.launch {
-        runCatching {
-            val list = repository.devLogin(nickname)
-            _households.value = list
-            refreshAll()
-        }.onFailure { _message.value = it.message ?: "로그인 실패" }
+        if (_isLoginLoading.value) return@launch
+        _isLoginLoading.value = true
+        try {
+            runCatching {
+                repository.checkServerHealth()
+            }.onFailure { err ->
+                _message.value = if (err is ServerUnavailableException) {
+                    err.userMessage
+                } else {
+                    "서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."
+                }
+                return@launch
+            }
+
+            runCatching {
+                val list = repository.devLogin(nickname)
+                _households.value = list
+                refreshAll()
+            }.onFailure { _message.value = it.message ?: "로그인 실패" }
+        } finally {
+            _isLoginLoading.value = false
+        }
     }
 
     fun createHousehold(name: String) = viewModelScope.launch {
@@ -105,10 +127,19 @@ class MainViewModel @Inject constructor(
     fun refreshAll() = viewModelScope.launch {
         val hhId = tokenStorage.getCurrentHouseholdId() ?: return@launch
         runCatching {
+            if (_households.value.isEmpty()) {
+                _households.value = repository.fetchAndSelectHousehold()
+            }
             repository.syncLocations(hhId)
             repository.syncItems(hhId)
             _activities.value = repository.getActivities(hhId)
         }.onFailure { _message.value = "동기화 실패 (오프라인 캐시 표시 중)" }
+    }
+
+    fun switchHousehold(householdId: Long) = viewModelScope.launch {
+        tokenStorage.saveCurrentHouseholdId(householdId)
+        _inviteCode.value = null
+        refreshAll()
     }
 
     fun createLocation(parentId: Long?, name: String) = viewModelScope.launch {
@@ -127,10 +158,19 @@ class MainViewModel @Inject constructor(
         }.onFailure { _message.value = it.message }
     }
 
-    fun createItem(request: CreateItemRequest) = viewModelScope.launch {
+    fun createItem(
+        request: CreateItemRequest,
+        photos: CompressedItemPhotos? = null,
+    ) = viewModelScope.launch {
         val hhId = tokenStorage.getCurrentHouseholdId() ?: return@launch
         runCatching {
-            repository.createItem(hhId, request)
+            val finalRequest = if (photos != null) {
+                val (detailKey, thumbKey) = repository.uploadItemPhotos(hhId, photos)
+                request.copy(detailImageKey = detailKey, thumbImageKey = thumbKey)
+            } else {
+                request
+            }
+            repository.createItem(hhId, finalRequest)
             _activities.value = repository.getActivities(hhId)
         }.onFailure { _message.value = it.message }
     }
@@ -148,11 +188,28 @@ class MainViewModel @Inject constructor(
         }.onFailure { _message.value = it.message }
     }
 
-    fun consumeItem(itemId: Long) = viewModelScope.launch {
+    fun consumeItem(
+        itemId: Long,
+        amount: Double? = null,
+        remainingQuantity: Double? = null,
+        note: String? = null,
+    ) = viewModelScope.launch {
         val hhId = tokenStorage.getCurrentHouseholdId() ?: return@launch
         runCatching {
-            repository.consumeItem(hhId, itemId)
+            repository.consumeItem(
+                householdId = hhId,
+                itemId = itemId,
+                amount = amount,
+                remainingQuantity = remainingQuantity,
+                note = note,
+            )
             _activities.value = repository.getActivities(hhId)
+            val isPartial = (remainingQuantity != null && remainingQuantity > 0.0) || amount != null
+            _message.value = if (isPartial) {
+                "먹고 남은 양을 기록했습니다."
+            } else {
+                "소비 완료 처리했습니다."
+            }
         }.onFailure { _message.value = it.message }
     }
 
@@ -161,6 +218,16 @@ class MainViewModel @Inject constructor(
         runCatching {
             repository.discardItem(hhId, itemId)
             _activities.value = repository.getActivities(hhId)
+            _message.value = "폐기 처리했습니다."
+        }.onFailure { _message.value = it.message }
+    }
+
+    fun moveItem(itemId: Long, newLocationId: Long) = viewModelScope.launch {
+        val hhId = tokenStorage.getCurrentHouseholdId() ?: return@launch
+        runCatching {
+            repository.moveItem(hhId, itemId, newLocationId)
+            _activities.value = repository.getActivities(hhId)
+            _message.value = "보관 장소를 이동했습니다."
         }.onFailure { _message.value = it.message }
     }
 

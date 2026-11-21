@@ -2,6 +2,7 @@ package com.fridge.manager.core.network
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class SocialGoogleRequest(
@@ -130,6 +131,8 @@ data class CreateItemRequest(
     @SerialName("expiry_date") val expiryDate: String? = null,
     @SerialName("expiry_type") val expiryType: String = "USE_BY",
     val memo: String? = null,
+    @SerialName("detail_image_key") val detailImageKey: String? = null,
+    @SerialName("thumb_image_key") val thumbImageKey: String? = null,
 )
 
 @Serializable
@@ -143,6 +146,8 @@ data class UpdateItemRequest(
 @Serializable
 data class ConsumeItemRequest(
     val amount: Double? = null,
+    @SerialName("remaining_quantity") val remainingQuantity: Double? = null,
+    val note: String? = null,
 )
 
 @Serializable
@@ -154,6 +159,7 @@ data class ItemDto(
     val name: String,
     val category: String,
     val quantity: Double,
+    @SerialName("initial_quantity") val initialQuantity: Double? = null,
     val unit: String,
     @SerialName("expiry_date") val expiryDate: String? = null,
     @SerialName("expiry_type") val expiryType: String,
@@ -161,7 +167,27 @@ data class ItemDto(
     @SerialName("expiry_state") val expiryState: String,
     val status: String,
     val memo: String? = null,
+    @SerialName("detail_image_key") val detailImageKey: String? = null,
+    @SerialName("thumb_image_key") val thumbImageKey: String? = null,
+    @SerialName("detail_image_url") val detailImageUrl: String? = null,
+    @SerialName("thumb_image_url") val thumbImageUrl: String? = null,
     @SerialName("updated_at") val updatedAt: String,
+)
+
+@Serializable
+data class PhotoUploadUrlRequest(
+    @SerialName("detail_size_bytes") val detailSizeBytes: Int,
+    @SerialName("thumb_size_bytes") val thumbSizeBytes: Int,
+    @SerialName("content_type") val contentType: String = "image/webp",
+)
+
+@Serializable
+data class PhotoUploadUrlResponse(
+    @SerialName("detail_image_key") val detailImageKey: String,
+    @SerialName("thumb_image_key") val thumbImageKey: String,
+    @SerialName("detail_upload_url") val detailUploadUrl: String,
+    @SerialName("thumb_upload_url") val thumbUploadUrl: String,
+    @SerialName("expires_in_seconds") val expiresInSeconds: Int = 300,
 )
 
 @Serializable
@@ -173,7 +199,7 @@ data class ActivityLogDto(
     @SerialName("entity_type") val entityType: String,
     @SerialName("entity_id") val entityId: Long,
     @SerialName("action_type") val actionType: String,
-    val detail: Map<String, String>? = null,
+    val detail: Map<String, JsonElement>? = null,
     @SerialName("created_at") val createdAt: String,
 )
 
@@ -181,4 +207,14 @@ data class ActivityLogDto(
 data class ActivityListDto(
     val items: List<ActivityLogDto> = emptyList(),
     @SerialName("next_cursor") val nextCursor: Long? = null,
+)
+
+@Serializable
+data class HealthResponseDto(
+    val status: String,
+    @SerialName("db_provider") val dbProvider: String? = null,
+    val detail: String? = null,
+    val maintenance: Boolean = false,
+    @SerialName("maintenance_message") val maintenanceMessage: String? = null,
+    @SerialName("min_android_version_code") val minAndroidVersionCode: Int = 1,
 )

@@ -89,10 +89,14 @@ logs/
 *.db
 
 # ================================
-# Misc
+# Misc / Android Local
 # ================================
 *.pem
 *.key
 *.crt
 .vercel
 coverage/
+local.properties
+.gradle/
+.kotlin/
+**/build/

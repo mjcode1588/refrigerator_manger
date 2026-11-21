@@ -47,13 +47,15 @@
 - 서버가 정상(`healthy`) 응답하면 백엔드 인증 및 가구 목록 조회를 완료한 뒤 홈 화면으로 진입하며, 연결 실패 시 내부 상세 정보 대신 사용자 친화적 안내(`"서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."`)를 표시합니다.
 - **재방문 사용자 오프라인 우선 진입**: 이미 토큰과 가구 ID가 저장된 사용자는 앱 실행 시 로컬 Room DB 데이터를 즉시 홈 화면에 표시하고, 백그라운드에서 조용히 서버 동기화를 수행합니다(네트워크 실패 시 기존 로컬 데이터 유지).
 
-### 1.2 토큰 정책
+### 1.2 토큰 및 세션 보안 정책
 | 항목 | 정책 |
 |---|---|
 | **Access Token** | JWT (HS256 또는 RS256), 유효기간 **30분**, Payload에 `sub`(user_id), `exp`, `iat` 포함 |
-| **Refresh Token** | 암호학적 난수 문자열, 유효기간 **30일**, Oracle DB `REFRESH_TOKENS`에 SHA-256 해시 저장 |
-| **Token Rotation** | `/auth/refresh` 호출 시 기존 Refresh Token 폐기(`revoked_at`) 후 새 토큰 쌍 발급 |
-| **Android 저장소** | Android Keystore 기반 `EncryptedSharedPreferences` 또는 Encrypted DataStore에 안전하게 보관 |
+| **Refresh Token** | 암호학적 난수 문자열, 유효기간 **30일**, DB `REFRESH_TOKENS`에 SHA-256 해시 저장 |
+| **Token Rotation & 탈취 감지** | `/auth/refresh` 호출 시 원자적으로 기존 Refresh Token을 폐기(`revoked_at`)한 뒤 새 토큰 쌍 발급. **이미 폐기된 Refresh Token이 재사용될 경우 토큰 탈취로 간주하여 해당 사용자의 모든 활성 Refresh Token을 즉시 일괄 폐기(Reuse Detection)** |
+| **운영 환경 Fail-Fast 검증** | `APP_ENV != "local"`일 때 기본 `JWT_SECRET_KEY`(또는 32바이트 미만 키) 사용 및 `ALLOW_DEV_LOGIN=true` 설정 시 서버 기동을 즉시 차단 |
+| **로그아웃 소유권 검증 및 세션 정리** | 백엔드 `POST /auth/logout`은 요청자의 `user_id`와 일치하는 Refresh Token만 폐기. Android 앱은 로그아웃 시 ① 서버 `/auth/logout` 호출 → ② `TokenStorage.clear()` → ③ 로컬 Room DB(`items`, `storage_locations`) 전체 삭제 → ④ `ExpiryCheckWorker.cancel()`을 일괄 수행하여 계정 전환 시 이전 데이터 잔류 및 알림 오발송을 방지 |
+| **Android 저장소 및 백업 차단** | Android Keystore 기반 암호화 저장소에 보관하며, `allowBackup="false"` 또는 `data_extraction_rules.xml`을 통해 인증 토큰과 로컬 DB가 클라우드/ADB 백업으로 추출되지 않도록 차단 |
 
 ---
 
@@ -73,10 +75,12 @@
 | 가구 이름 변경 / 구성원 추방 | O | X |
 | 가구 탈퇴 | (다른 OWNER 위임 후 가능) | O |
 
-### 2.3 초대 코드 정책
+### 2.3 초대 코드 및 남용 방지 정책
 - 혼동되기 쉬운 문자(`0`, `O`, `1`, `I`, `L`)를 제외한 영문 대문자+숫자 8자리 생성.
 - 기본 만료 시간 24시간, 기본 최대 사용 횟수 5회 (생성 시 변경 가능).
 - 이미 해당 가구에 소속된 사용자가 코드를 입력하면 중복 가입 없이 안내 메시지 반환.
+- **동시 참여 경합(Race Condition) 방지**: `/households/join` 처리 시 `used_count < max_uses` 조건을 포함한 원자적 업데이트(또는 행 잠금)로 동시 요청 시 최대 사용 횟수 초과 가입을 방지합니다.
+- **Rate Limiting (무차별 대입 방어)**: 8자리 초대 코드 무차별 대입 및 인증 남용을 막기 위해 `/households/join` 및 `/auth/*` 엔드포인트에 IP/사용자 기준 요청 횟수 제한(`429 TOO_MANY_REQUESTS`)을 적용합니다.
 
 ---
 
@@ -102,3 +106,4 @@
 | 2026-11-21 | 운영 로그인 제공자를 Kakao 단일로 변경하고 카카오톡 로그인 구현 체크리스트(Kakao Developers·Android·FastAPI) 추가 | `docs/03-features/01-auth-and-household.md` |
 | 2026-11-21 | `/health` 점검 모드·최소 앱 버전 필드 추가, 4초 짧은 헬스체크 타임아웃 및 재방문 사용자 오프라인 우선 진입 구현 | `docs/03-features/01-auth-and-household.md`, `server/app/core/config.py`, `server/app/main.py`, `android/...` |
 | 2026-11-21 | Google 로그인 버튼 제거, `카카오로 시작하기` 버튼 임시 무반응 처리, `/auth/dev-login` 404 해소를 위해 `ALLOW_DEV_LOGIN` 설정 도입 (`true` 기본값) | `docs/03-features/01-auth-and-household.md`, `server/app/core/config.py`, `server/app/api/routers/auth.py`, `android/app/src/main/java/com/fridge/manager/ui/screens/AuthOnboardingScreen.kt` |
+| 2026-11-21 | 보안 하드닝 명세 추가 — 운영 환경 Fail-Fast 검증, Refresh Token 재사용 탈취 감지(Reuse Detection), 로그아웃 소유권 검증 및 로컬 Room 캐시/워커 일괄 정리, 초대 코드 원자적 차감 및 Rate Limiting 정책 반영 | `docs/03-features/01-auth-and-household.md` |
