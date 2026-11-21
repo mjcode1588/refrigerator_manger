@@ -1,0 +1,60 @@
+# 테스트(VM 내 Docker PostgreSQL): server/.env 에 COMPOSE_PROFILES=local-db 설정
+# 운영(OCI Autonomous DB): server/.env 에서 COMPOSE_PROFILES 제거 후 DB_PROVIDER=oracle 설정
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["local-db"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fridge_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fridge_password}
+      POSTGRES_DB: ${POSTGRES_DB:-fridge}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fridge_user} -d ${POSTGRES_DB:-fridge}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      # 호스트 로컬(cron 헬스체크 및 SSH 터널링) 전용 바인딩; 외부 트래픽은 Caddy 경유
+      - "127.0.0.1:8000:8000"
+    # OCI ADB mTLS(Wallet) 사용 시 아래 주석 해제 후 VM 경로(/etc/oci-wallet)에 Wallet 배치
+    # volumes:
+    #   - /etc/oci-wallet:/etc/oci-wallet:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,73 @@
+name: Deploy Server to OCI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - ".github/workflows/deploy-server.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Lint & Pytest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run ruff
+        run: uv run ruff check .
+
+      - name: Run pytest
+        run: uv run pytest -q
+
+  deploy:
+    name: Deploy to OCI Compute VM
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH key
+        env:
+          OCI_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$OCI_SSH_KEY" > ~/.ssh/oci_key
+          chmod 600 ~/.ssh/oci_key
+
+      - name: Pull, rebuild, and restart on OCI VM
+        env:
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+          OCI_APP_DIR: ${{ secrets.OCI_APP_DIR }}
+        run: |
+          ssh -i ~/.ssh/oci_key -o StrictHostKeyChecking=accept-new "${OCI_USER}@${OCI_HOST}" bash -s <<'EOF'
+          set -euo pipefail
+          APP_DIR="${OCI_APP_DIR:-$HOME/refrigerator_manger}"
+          cd "$APP_DIR"
+          git fetch origin main
+          git reset --hard origin/main
+          docker compose -f server/compose.prod.yml up -d --build --remove-orphans
+
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8000/api/v1/health; then
+              echo ""
+              echo "Deploy healthcheck passed!"
+              exit 0
+            fi
+            sleep 3
+          done
+
+          echo "Healthcheck failed!" >&2
+          docker compose -f server/compose.prod.yml logs --tail=50 api
+          exit 1
+          EOF

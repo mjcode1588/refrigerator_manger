@@ -1,8 +1,8 @@
 # 02. 개발 로드맵 (Development Roadmap)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-19  
-> **관련 문서**: [프로젝트 개요](./01-project-overview.md), [OCI Always Free 인프라 설계](../02-architecture/02-oci-always-free-infra.md)
+> **최종 수정일**: 2026-11-21  
+> **관련 문서**: [프로젝트 개요](./01-project-overview.md), [OCI Always Free 인프라 설계](../02-architecture/02-oci-always-free-infra.md), [UI/UX 디자인 지침](../04-guides/05-ui-design-guidelines.md)
 
 ---
 
@@ -13,7 +13,8 @@ flowchart LR
     M0["Phase 0\n설계 문서 확정"] --> M1["Phase 1\nOCI 인프라 & 다중 DB 구축"]
     M1 --> M2["Phase 2\nFastAPI 백엔드 개발"]
     M2 --> M3["Phase 3\n웹 프론트 기능 실험"]
-    M3 --> M4["Phase 4\nAndroid 앱 개발"]
+    M3 --> M3_5["Phase 3.5\nUI/UX 디자인 (Stitch MCP)"]
+    M3_5 --> M4["Phase 4\nAndroid 앱 개발"]
     M4 --> M5["Phase 5\n통합 테스트 & 실사용 배포"]
 ```
 
@@ -45,14 +46,20 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - [ ] **핵심 기능 실험 UI**: 가구 생성/초대 참여, 자유 트리 보관 장소 탐색·추가·이동, 품목 등록·수량 조절·소비/폐기, D-Day 임박 목록 및 변경 이력 확인
 - [ ] 실험 결과를 바탕으로 API 스펙(요청/응답 필드, 에러 코드, UX 불편 사항) 보완 및 확정
 
+### Phase 3.5: UI/UX 디자인 확정 (Google Stitch MCP)
+본격적인 네이티브 앱 UI 구현 전, Google Stitch MCP로 디자인 시스템과 핵심 화면 시안을 먼저 생성·확정합니다. ([UI/UX 디자인 지침](../04-guides/05-ui-design-guidelines.md))
+- [x] Stitch MCP 프로젝트 생성 및 공통 디자인 시스템(`Fresh Kitchen Material`) 수립
+- [x] 핵심 4개 화면 시안 생성 (재고·장소 메인, 인증·가구 온보딩, 품목 등록 바텀시트, 가족·알림)
+- [x] 시안 검토 및 세부 문구·레이아웃 보완 후 최종 디자인 확정
+
 ### Phase 4: Kotlin Android 앱 개발 (본격 모바일 클라이언트)
-확정된 FastAPI 스펙을 기반으로 실사용 모바일 앱을 개발합니다.
-- [ ] 프로젝트 스캐폴딩 (Kotlin, Jetpack Compose, Hilt, Retrofit/OkHttp, Room, WorkManager)
-- [ ] **인증 & 가구 온보딩 UI**: Google/Kakao 소셜 로그인, 가구 생성 또는 초대 코드 입력 화면
-- [ ] **보관 장소 탐색기 UI**: 트리 구조(폴더/하위 구역) 탐색, 보관 장소 추가/편집/이동
-- [ ] **품목 관리 UI**: 품목 등록/수정, D-Day 배지 표시, 빠른 수량 조절(+/-), 소비/폐기 액션, 검색/필터
-- [ ] **로컬 캐시 & 알림**: Room 캐시 동기화 및 `WorkManager` 기반 유통기한 임박 로컬 알림 스케줄러 구현
-- [ ] **가족 & 변경 이력 UI**: 구성원 목록, 초대 코드 복사/공유, 최근 변경 이력 타임라인
+확정된 FastAPI 스펙과 **Stitch 확정 디자인 시안**을 기반으로 실사용 모바일 앱을 개발합니다.
+- [x] 프로젝트 스캐폴딩 (Kotlin, Jetpack Compose, Hilt, Retrofit/OkHttp, Room, WorkManager)
+- [x] **인증 & 가구 온보딩 UI**: Google/Kakao 소셜 로그인(체험 로그인 포함), 가구 생성 또는 초대 코드 입력 화면 (`Fresh Kitchen Material` 반영)
+- [x] **보관 장소 탐색기 UI**: 트리 구조(폴더/하위 구역) 탐색, 하위 구역 포함 필터 토글, 보관 장소 추가/삭제
+- [x] **품목 관리 UI**: 요약 대시보드, 품목 등록 바텀시트, D-Day 배지 표시, 빠른 수량 조절(+/-), 소비/폐기 액션, 검색/정렬
+- [x] **로컬 캐시 & 알림**: Room 캐시 동기화 및 `WorkManager` 기반 유통기한 임박 로컬 알림 스케줄러 구현
+- [x] **가족 & 변경 이력 UI**: 초대 코드 발급·복사, 최근 변경 이력 타임라인, 로컬 알림 기준일(D-1/3/5/7)·시간 설정
 
 ### Phase 5: 통합 테스트, 안정화 및 실사용 배포
 - [ ] Android ↔ OCI FastAPI ↔ 선택 DB(Oracle ADB / Supabase) 종단간(E2E) 연동 검증
@@ -67,3 +74,11 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - 각 Phase의 모든 체크리스트 항목이 완료되고, 관련 `docs/` 문서가 실제 구현 내용과 일치하도록 업데이트되어야 합니다.
 - 백엔드 변경 시 핵심 비즈니스 로직(인증, 트리 무결성, 가구 권한, 이력 기록)의 자동화 테스트가 통과해야 합니다.
 - OCI 과금 발생 가능성이 있는 리소스가 추가되지 않았음을 배포 전 점검합니다.
+
+---
+
+## 변경 이력
+- **2026-11-21**: Phase 3.5 (Google Stitch MCP 기반 UI/UX 디자인 확정) 단계 및 마일스톤 플로우차트 추가, Phase 4에 Stitch 확정 디자인 기준 반영 명시.
+- **2026-11-21**: Stitch 확정 시안(`Fresh Kitchen Material`) 기반 Android Jetpack Compose UI 구현 완료 (`Theme.kt`, `AuthOnboardingScreen.kt`, `InventoryScreen.kt`, `FamilyAndSettingsScreen.kt`, `MainActivity.kt`) 및 `testDebugUnitTest` 통과.
+- **2026-11-21**: 백엔드 `pytest` 9건 전체 통과 확인; Android 품목 보관 장소 이동(`moveItem`) 및 상단 가구 스위처(`switchHousehold`) 추가 후 `testDebugUnitTest` 통과.
+- **2026-11-21**: `SM_S911N` 실기기 디버그 APK 설치(`app-debug.apk`), `adb reverse tcp:8080 tcp:8080` 포트 포워딩, FastAPI(`127.0.0.1:8080`) 라이브 E2E API 스모크 테스트(`LIVE_E2E_OK`) 및 `ruff check` 통과 확인.

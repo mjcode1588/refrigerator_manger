@@ -1,7 +1,7 @@
 # 01. 백엔드 개발 및 다중 DB 배포 가이드 (FastAPI + Oracle ADB / Supabase)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-19  
+> **최종 수정일**: 2026-11-21  
 > **관련 문서**: [OCI Always Free 및 무료 DB 인프라 설계](../02-architecture/02-oci-always-free-infra.md), [DB ERD 및 호환성 설계](../02-architecture/03-database-erd.md)
 
 ---
@@ -79,13 +79,82 @@ KAKAO_REST_API_KEY=<kakao-app-key>
 
 ## 5. OCI Compute VM 배포 구성 (무과금)
 
-1. **Reverse Proxy (Caddy)**:
-   ```caddyfile
-   api.yourdomain.duckdns.org {
-       reverse_proxy 127.0.0.1:8000
-   }
+`server/Dockerfile`, `server/compose.prod.yml`, `server/Caddyfile`을 통해 **테스트(VM 내 Docker PostgreSQL)**와 **실제 운영(OCI Autonomous DB)**을 `.env` 설정만으로 전환할 수 있습니다.
+
+### 5.1 VM 초기 준비 (1회)
+1. **방화벽 및 포트 개방**:
+   - OCI 콘솔 VCN Security List / NSG에서 인바운드 `TCP 80, 443` 허용 (`SSH 22`는 본인 IP만).
+   - Ubuntu VM 내부 `iptables`에서 `80`, `443` 허용 후 영구 저장:
+     ```bash
+     sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+     sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+     sudo netfilter-persistent save
+     ```
+2. **Docker 및 Git 설치** 후 저장소 클론:
+   ```bash
+   git clone <repo-url> ~/refrigerator_manger
+   cd ~/refrigerator_manger/server
+   cp .env.example .env
    ```
-   - 포트 80/443만 외부 개방, FastAPI는 `127.0.0.1:8000` 바인딩.
-2. **프로세스 관리**: Docker Compose 또는 `systemd` 서비스 등록으로 VM 재부팅 시 자동 기동.
-3. **무료 DB 자동 중지/일시정지 방지 Cron**:
-   - OCI ADB와 Supabase Free 모두 7일 미사용 시 중지되므로, 매일 1회 `curl -fsS http://127.0.0.1:8000/api/v1/health > /dev/null`을 `cron`으로 실행합니다.
+
+### 5.2 단계별 DB 전환 및 실행
+- **1단계 (테스트: VM 내 Docker PostgreSQL)**:
+  `server/.env`에 아래 항목을 설정하면 `postgres` 컨테이너가 함께 기동됩니다.
+  ```env
+  APP_ENV=production
+  COMPOSE_PROFILES=local-db
+  DB_PROVIDER=postgres
+  DATABASE_URL=postgresql+psycopg://fridge_user:fridge_password@postgres:5432/fridge
+  POSTGRES_USER=fridge_user
+  POSTGRES_PASSWORD=fridge_password
+  POSTGRES_DB=fridge
+  SITE_ADDRESS=:80
+  ```
+- **2단계 (실제 배포: OCI Autonomous DB)**:
+  OCI 콘솔에서 ATP Always Free 생성(Auto Scaling OFF, One-Way TLS + VM 공인 IP ACL 허용) 후 `server/.env`에서 `COMPOSE_PROFILES`를 비우고 Oracle 연결 정보로 교체합니다.
+  ```env
+  APP_ENV=production
+  COMPOSE_PROFILES=
+  DB_PROVIDER=oracle
+  DATABASE_URL=oracle+oracledb://ADMIN:<비밀번호>@<ADB_DSN>
+  SITE_ADDRESS=api.yourdomain.duckdns.org
+  ```
+- **기동 명령**:
+  ```bash
+  docker compose -f server/compose.prod.yml up -d --build --remove-orphans
+  ```
+  컨테이너 시작 시 `entrypoint.sh`가 `alembic upgrade head`를 자동 실행한 뒤 `uvicorn`을 기동합니다.
+
+### 5.3 무료 DB 자동 중지 방지 Cron
+- OCI ADB와 Supabase Free 모두 7일 미사용 시 중지되므로, VM `crontab -e`에 매일 1회 헬스체크를 등록합니다.
+  ```cron
+  0 4 * * * curl -fsS http://127.0.0.1:8000/api/v1/health > /dev/null
+  ```
+
+### 5.4 운영 전환 전 보안 체크리스트
+테스트 단계(`SITE_ADDRESS=:80`)에서 실제 운영으로 전환하기 전에 아래 3가지를 반드시 적용합니다.
+1. **HTTP → HTTPS 전환**: 무료 도메인(예: DuckDNS)을 VM 공인 IP에 연결하고, `server/.env`의 `SITE_ADDRESS`를 `:80`에서 실제 도메인(`api.yourdomain.duckdns.org`)으로 변경해 Caddy 자동 TLS(HTTPS)를 활성화합니다.
+2. **테스트용 비밀번호·Swagger 정리**: Docker PostgreSQL을 계속 사용할 경우 `POSTGRES_PASSWORD`를 `openssl rand -hex 16` 등 랜덤 값으로 교체하고, 운영 환경(`APP_ENV=production`)에서는 FastAPI `/docs`·`/openapi.json` 비활성화를 검토합니다.
+3. **OCI Autonomous DB ACL 제한**: One-Way TLS 사용 시 OCI ADB 콘솔의 **Access Control List(ACL)**에 반드시 Compute VM의 공인 IP만 허용 등록하여 외부 IP 접근을 차단합니다.
+
+---
+
+## 6. 코드 수정 시 자동 반영·재시작 (GitHub Actions CI/CD)
+
+`.github/workflows/deploy-server.yml`이 `main` 브랜치의 `server/**` 변경을 감지해 테스트(`ruff`, `pytest`) 통과 후 OCI VM에 자동 배포합니다.
+
+1. **GitHub Repository Secrets 등록** (`Settings > Secrets and variables > Actions`):
+   - `OCI_HOST`: OCI Compute VM 공인 IP
+   - `OCI_USER`: VM SSH 사용자 (예: `ubuntu`)
+   - `OCI_SSH_KEY`: VM 접속용 SSH 개인키 전문
+   - `OCI_APP_DIR` *(선택)*: VM 내 저장소 경로 (기본값: `$HOME/refrigerator_manger`)
+2. **배포 흐름**:
+   - `git push origin main` → GitHub Actions `ruff` + `pytest` 검증 → SSH 접속 후 `git reset --hard origin/main` → `docker compose -f server/compose.prod.yml up -d --build --remove-orphans` → `/api/v1/health` 200 OK 확인.
+
+---
+
+## 변경 이력
+
+| 날짜 | 변경 내용 | 주요 파일 |
+|---|---|---|
+| 2026-11-21 | OCI VM 배포 구성(`local-db` 테스트 ↔ OCI ADB 운영 전환), 운영 전환 전 보안 체크리스트 및 GitHub Actions 자동 배포 절차 추가 | `server/Dockerfile`, `server/entrypoint.sh`, `server/compose.prod.yml`, `server/Caddyfile`, `.github/workflows/deploy-server.yml`, `server/.env.example` |

@@ -1,7 +1,7 @@
 # 02. OCI Always Free 및 무료 DB 인프라 설계
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-19  
+> **최종 수정일**: 2026-11-21  
 > **관련 문서**: [전체 시스템 아키텍처](./01-system-architecture.md), [백엔드 개발·배포 가이드](../04-guides/01-backend-setup.md)
 
 ---
@@ -22,8 +22,8 @@
 
 | 리소스 | 사양 (Always Free 한도) | 용도 | 주의사항 |
 |---|---|---|---|
-| **Compute VM** | `VM.Standard.A1.Flex` (ARM Ampere, 1~2 OCPU / 6~12GB RAM) 또는 `VM.Standard.E2.1.Micro` (AMD 1/8 OCPU, 1GB RAM) | FastAPI 서버 + Caddy(HTTPS) 실행 | Boot Volume 50GB 이하 유지 (총 Block Volume 무료 한도 200GB) |
-| **VCN / Subnet** | VCN 1개, Public Subnet 1개, Internet Gateway 1개 | 외부 HTTPS(443) 인바운드 및 외부 DB/OAuth 아웃바운드 | NAT Gateway는 유료이므로 사용 금지 |
+| **Compute VM** | `VM.Standard.E2.1.Micro` (AMD 1/8 OCPU, 1GB RAM + 2GB Swap) 또는 `VM.Standard.A1.Flex` (ARM Ampere, 1~2 OCPU / 6~12GB RAM) | FastAPI 서버 + Caddy(HTTPS) 실행 (OS: Oracle Linux 9, `opc` 계정) | Boot Volume 50GB 이하 유지 (현재 46.6GB, 총 Block Volume 무료 한도 200GB). `ap-tokyo-1` 리전 `A1.Flex` 재고 부족 시 `E2.1.Micro` 우선 사용 |
+| **VCN / Subnet** | VCN `RefriManager` (`10.0.0.0/16`), Public Subnet (`10.0.0.0/24`), Internet Gateway 1개 | 외부 HTTP/HTTPS(80, 443) 및 SSH(22) 인바운드, 외부 DB/OAuth 아웃바운드 | NAT Gateway는 유료이므로 사용 금지. OS `firewalld`에서도 `http`/`https` 개방 필수 |
 | **Reverse Proxy** | VM 내부 Caddy (Let's Encrypt 자동 TLS) | 무료 HTTPS 종단 | 유료 OCI Load Balancer 대체 |
 | **Outbound Data** | 월 10TB 무료 | API JSON 트래픽 및 외부 DB 통신 | 1차 버전에서는 이미지 업로드 배제로 트래픽 최소화 |
 
@@ -66,4 +66,23 @@ flowchart LR
 3. **스토리지 한도 관리 (특히 Supabase 500MB 기준)**:
    - 품목 이미지 바이너리는 DB에 저장하지 않으며, `activity_logs` 변경 이력은 90~180일 보관 후 오래된 로그를 정리하는 배치/정책을 둡니다.
 4. **Compute VM 유휴 회수 및 빠른 복구**:
-   - 서버 실행 환경은 Docker Compose로 코드화하여 VM 재생성 시 10분 내 복구 가능하게 유지합니다.
+   - 서버 실행 환경은 Docker Compose(`server/compose.prod.yml`)로 코드화하여 VM 재생성 시 10분 내 복구 가능하게 유지합니다.
+
+---
+
+## 6. 현재 구성된 배포·CI/CD 환경 (2026-11-21 기준)
+
+- **리전 / 네트워크**: `ap-tokyo-1` (Japan East Tokyo), VCN `RefriManager` (Security List 인바운드 TCP `22`, `80`, `443` 허용)
+- **컴퓨트 인스턴스**: `VM.Standard.E2.1.Micro` (Oracle Linux 9, Boot Volume 46.6GB, Swap 2GB 추가 권장)
+- **단계별 DB 운용 전략**:
+  - **1단계 (기능 테스트)**: `server/.env`에 `COMPOSE_PROFILES=local-db`를 지정해 VM 내부 Docker PostgreSQL(`postgres:16-alpine`)로 검증
+  - **2단계 (실제 운영)**: `COMPOSE_PROFILES`를 비우고 `DB_PROVIDER=oracle`로 전환해 **OCI Autonomous DB (Always Free)** 연결
+- **자동 배포 (CI/CD)**: `.github/workflows/deploy-server.yml`을 통해 `main` 브랜치 `server/**` 변경 시 `ruff`·`pytest` 검증 후 OCI VM에 SSH(`opc`) 접속하여 자동 재빌드·재시작 및 `/api/v1/health` 헬스체크 수행
+
+---
+
+## 변경 이력
+
+| 날짜 | 변경 내용 | 주요 파일 |
+|---|---|---|
+| 2026-11-21 | 실제 생성된 OCI 리소스(`ap-tokyo-1`, VCN `RefriManager`, `VM.Standard.E2.1.Micro` / Oracle Linux 9) 및 2단계 DB 전환·CI/CD 구성 반영 | `docs/02-architecture/02-oci-always-free-infra.md` |

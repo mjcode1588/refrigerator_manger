@@ -1,7 +1,7 @@
 # 01. 인증 및 가족/동거인 공동 관리 명세
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-19  
+> **최종 수정일**: 2026-11-21  
 > **관련 문서**: [DB ERD](../02-architecture/03-database-erd.md), [REST API 명세](../02-architecture/04-api-spec.md)
 
 ---
@@ -9,9 +9,35 @@
 ## 1. 소셜 로그인 및 JWT 인증
 
 ### 1.1 지원 제공자 및 검증 흐름
-- **Google 로그인**: Android Credential Manager(Google Sign-In)로 획득한 `id_token`을 FastAPI로 전달 → 백엔드에서 Google 공개키(JWKS) 및 `aud`(Client ID) 검증.
-- **Kakao 로그인**: Android Kakao SDK로 획득한 `access_token`을 FastAPI로 전달 → 백엔드에서 Kakao 사용자 정보 API(`https://kapi.kakao.com/v2/user/me`) 호출하여 `id`, 닉네임 확인.
+- **단일 소셜 로그인 정책**: 운영 환경의 로그인은 **Kakao(카카오톡/카카오계정) 단일 제공자**만 지원합니다. (Google 로그인은 비활성화/제거하며, `/auth/dev-login`은 `APP_ENV=local` 개발 환경에서만 허용합니다.)
+- **Kakao 로그인 흐름**: Android Kakao SDK로 획득한 `access_token`을 FastAPI(`POST /api/v1/auth/social/kakao`)로 전달 → 백엔드에서 Kakao 사용자 정보 API(`https://kapi.kakao.com/v2/user/me`) 호출하여 `id`, 닉네임, 이메일 확인.
 - 최초 로그인 시 `USERS` 및 `SOCIAL_ACCOUNTS` 레코드를 자동 생성하며, 별도의 회원가입 폼 없이 즉시 진입합니다.
+
+### 1.1.1 카카오톡 로그인 구현 체크리스트
+
+#### 1) Kakao Developers 콘솔 설정
+1. [Kakao Developers](https://developers.kakao.com/)에서 애플리케이션 생성 후 **네이티브 앱 키**(Android용) 확인
+2. **플랫폼 > Android** 등록:
+   - 패키지명: `com.fridge.manager`
+   - **키 해시(Key Hash)**: 로컬 디버그 키스토어 해시 + 배포용 릴리즈 키스토어 해시 등록
+3. **카카오 로그인 > 활성화 설정**: 상태 `ON`
+4. **카카오 로그인 > 동의항목**: `닉네임`(필수 동의), `카카오계정(이메일)`(선택 동의) 설정
+
+#### 2) Android 앱 (`android/`) 구현 사항
+1. **SDK 및 Manifest 설정**:
+   - `com.kakao.sdk:v2-user` 의존성 추가 (`libs.versions.toml` / `app/build.gradle.kts`)
+   - `AndroidManifest.xml`에 `AuthCodeHandlerActivity` 및 `kakao{NATIVE_APP_KEY}://oauth` 스킴 등록
+   - `Application` 클래스에서 `KakaoSdk.init(this, BuildConfig.KAKAO_NATIVE_APP_KEY)` 초기화 (키는 `local.properties`로 주입, Git 커밋 금지)
+2. **로그인 UI 및 토큰 연동**:
+   - 로그인 화면에서 **"카카오로 시작하기"** 단일 버튼만 노출
+   - 카카오톡 설치 시 `UserApiClient.instance.loginWithKakaoTalk()`, 미설치 시 `loginWithKakaoAccount()` 호출
+   - 획득한 Kakao `access_token`을 백엔드 `POST /api/v1/auth/social/kakao`로 전송해 자체 JWT(`access_token`, `refresh_token`) 발급 및 안전 저장
+
+#### 3) FastAPI 백엔드 (`server/`) 확인 및 보완 사항
+1. **구현 완료**: `POST /api/v1/auth/social/kakao` (`verify_kakao` → `https://kapi.kakao.com/v2/user/me`) 구현됨
+2. **후속 작업**:
+   - Google 로그인 엔드포인트(`/auth/social/google`) 비활성화/제거
+   - *(권장 보안 강화)* `https://kapi.kakao.com/v1/user/access_token_info` 호출을 추가해 토큰의 `app_id`가 서비스의 `KAKAO_APP_ID`와 일치하는지 검증 (타 앱 토큰 재사용 방지)
 
 ### 1.2 토큰 정책
 | 항목 | 정책 |
@@ -58,3 +84,11 @@
 ### UI 표시 예시
 - *"민수님이 `주방 냉장고 > 냉장실`에 **서울우유 1L (2팩)**을 등록했습니다. · 10분 전"*
 - *"지영님이 **계란 30구** 수량을 `12개 → 8개`로 소비했습니다. · 1시간 전"*
+
+---
+
+## 변경 이력
+
+| 날짜 | 변경 내용 | 주요 파일 |
+|---|---|---|
+| 2026-11-21 | 운영 로그인 제공자를 Kakao 단일로 변경하고 카카오톡 로그인 구현 체크리스트(Kakao Developers·Android·FastAPI) 추가 | `docs/03-features/01-auth-and-household.md` |

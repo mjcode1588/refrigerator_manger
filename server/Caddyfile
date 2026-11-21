@@ -1,0 +1,5 @@
+# 테스트(IP 접속): SITE_ADDRESS=:80 (기본값)
+# 운영(도메인 HTTPS): SITE_ADDRESS=api.yourdomain.duckdns.org
+{$SITE_ADDRESS::80} {
+    reverse_proxy api:8000
+}

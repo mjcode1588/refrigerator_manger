@@ -1,7 +1,7 @@
 # 📚 우리집 식재료·보관품 관리 시스템 문서 저장소
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-19  
+> **최종 수정일**: 2026-11-21  
 
 이 디렉토리는 **냉장고, 팬트리 등 가정 내 모든 보관 장소의 식재료 및 완제품을 관리하는 시스템**의 기획·아키텍처·기능 명세·개발 가이드를 통합 관리하는 문서 저장소입니다.
 
@@ -37,6 +37,7 @@
 | [02-android-setup.md](./04-guides/02-android-setup.md) | Kotlin + Jetpack Compose + Room + WorkManager 앱 구조 및 빌드 가이드 | 초안 |
 | [03-testing-strategy.md](./04-guides/03-testing-strategy.md) | 백엔드(pytest·다중 DB) 및 Android(JVM·Room·WorkManager·Compose) 테스팅 전략 | 초안 |
 | [04-artemis-wireless-testing.md](./04-guides/04-artemis-wireless-testing.md) | Google ARTEMIS + 무선 디버깅 기반 Android 실기기 자동화 테스트 가이드 | 초안 |
+| [05-ui-design-guidelines.md](./04-guides/05-ui-design-guidelines.md) | UI/UX 디자인 지침(Fresh Kitchen Material) 및 Stitch MCP 선 디자인 → 후 구현 워크플로우 | 초안 |
 
 ---
 
