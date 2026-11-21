@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 

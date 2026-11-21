@@ -79,6 +79,8 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
   - [ ] `network_security_config.xml` 분리(Debug 로컬 HTTP 허용 / Release HTTPS 강제) 및 `allowBackup="false"`(또는 백업 제외 규칙) 적용
   - [ ] 로그아웃 시 서버 `/auth/logout` 호출 + `TokenStorage.clear()` + Room DB 초기화 + `ExpiryCheckWorker.cancel()` 일괄 정리
   - [ ] `HttpLoggingInterceptor.redactHeader("Authorization")` 마스킹, `proguard-rules.pro` 직렬화/Retrofit 규칙 추가 및 `.gitignore`에 `android/local.properties` 등록
+- [x] **GitHub Actions CI/CD (`deploy-server.yml`) 보완**:
+  - [x] `uv sync --frozen --extra dev` 및 `uv run --extra dev` 적용으로 `[project.optional-dependencies] dev`(`ruff`, `pytest`) 미설치 오류(`Failed to spawn: ruff`) 해결 및 `ruff check` 린트 통과 확인
 - [ ] Android ↔ OCI FastAPI ↔ 선택 DB(Oracle ADB / Supabase) 종단간(E2E) 연동 검증
 - [ ] 네트워크 오프라인/지연 상황에서의 Room 캐시 폴백 및 에러 처리 검증
 - [ ] 무료 티어 리소스 사용량(CPU/RAM/DB 스토리지/트래픽) 및 7일 미사용 자동 중지/일시정지 대응 점검
@@ -102,3 +104,4 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - **2026-11-21**: **Phase 4.5 (품목 사진 등록·상세조회 및 경량 스토리지 연동)** 신설 — Stitch MCP 시안·설계 문서 완료 체크 및 백엔드(`server/`)·Android(`android/`) 구현 항목 등록.
 - **2026-11-21**: **Phase 4.5 백엔드·Android 구현 완료** — `detail_image_key`/`thumb_image_key` Alembic 마이그레이션(`0003_add_item_image_keys`), `/items/photo-upload-url` 및 미디어 업로드/서빙 API(`pytest` 10건 통과), Android 2단계 WebP 압축(`ImageCompressor`), 카메라·앨범 피커, 등록 프리뷰 및 목록 썸네일·상세 고해상도 이미지 조회 구현(`testDebugUnitTest` 통과).
 - **2026-11-21**: **Phase 5에 백엔드·Android APK 보안 하드닝 신규 요구사항 추가** — 기존 미구현 계획 항목을 제외하고 새롭게 도출된 보안 설계(운영 Fail-Fast 검증, 토큰 소유권·재사용 탈취 감지, 초대 코드 원자적 차감 및 Rate Limiting, `/health` 내부 예외 마스킹, `network_security_config.xml` Release HTTPS 강제, 백업 제외, 로그아웃 시 서버·Room·WorkManager 일괄 정리, 로그 헤더 마스킹 및 `proguard-rules.pro`)를 관련 문서 및 로드맵에 반영.
+- **2026-11-21**: **Phase 5 GitHub Actions CI/CD `uv` 개발 의존성(`--extra dev`) 보완 완료** — `.github/workflows/deploy-server.yml`에 `uv sync --frozen --extra dev` 및 `uv run --extra dev` 적용, `server/app/api/routers/items.py`(`HTTPException` 임포트) 및 `server/tests/test_locations_and_items.py` 줄 길이 정리로 `ruff check`(`All checks passed!`)와 `pytest` 10건 통과 확인.

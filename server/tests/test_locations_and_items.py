@@ -188,9 +188,9 @@ def test_item_photo_upload_and_registration(client, tmp_path, monkeypatch):
     ).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    hh_id = client.post("/api/v1/households", json={"name": "사진 테스트집"}, headers=headers).json()[
-        "id"
-    ]
+    hh_id = client.post(
+        "/api/v1/households", json={"name": "사진 테스트집"}, headers=headers
+    ).json()["id"]
     loc_id = client.post(
         f"/api/v1/households/{hh_id}/locations",
         json={"name": "냉장실", "storage_type": "FRIDGE"},
@@ -200,7 +200,11 @@ def test_item_photo_upload_and_registration(client, tmp_path, monkeypatch):
     # Reject oversized thumb (> 100KB)
     bad_url_resp = client.post(
         f"/api/v1/households/{hh_id}/items/photo-upload-url",
-        json={"detail_size_bytes": 100000, "thumb_size_bytes": 150000, "content_type": "image/webp"},
+        json={
+            "detail_size_bytes": 100000,
+            "thumb_size_bytes": 150000,
+            "content_type": "image/webp",
+        },
         headers=headers,
     )
     assert bad_url_resp.status_code == 422

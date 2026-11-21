@@ -157,7 +157,8 @@ KAKAO_REST_API_KEY=<kakao-app-key>
    - `OCI_SSH_KEY`: VM 접속용 SSH 개인키 전문
    - `OCI_APP_DIR` *(선택)*: VM 내 저장소 경로 (기본값: `$HOME/refrigerator_manger`)
 2. **배포 흐름**:
-   - `git push origin main` → GitHub Actions `ruff` + `pytest` 검증 → SSH 접속 후 `git reset --hard origin/main` → `docker compose -f server/compose.prod.yml up -d --build --remove-orphans` → `/api/v1/health` 200 OK 확인.
+   - `git push origin main` → GitHub Actions `uv sync --frozen --extra dev`로 개발 의존성(`ruff`, `pytest`) 설치 후 `uv run --extra dev ruff check .` + `uv run --extra dev pytest -q` 검증 → SSH 접속 후 `git reset --hard origin/main` → `docker compose -f server/compose.prod.yml up -d --build --remove-orphans` → `/api/v1/health` 200 OK 확인.
+   - **주의 (`uv` optional-dependencies)**: `server/pyproject.toml`의 `ruff`, `pytest`가 `[project.optional-dependencies] dev`에 정의되어 있으므로, `uv sync` 및 `uv run` 실행 시 `--extra dev` 옵션을 반드시 함께 전달해야 가상환경에 `ruff`/`pytest` 바이너리가 설치·유지됩니다.
 
 ---
 
@@ -167,3 +168,4 @@ KAKAO_REST_API_KEY=<kakao-app-key>
 |---|---|---|
 | 2026-11-21 | OCI VM 배포 구성(`local-db` 테스트 ↔ OCI ADB 운영 전환), 운영 전환 전 보안 체크리스트 및 GitHub Actions 자동 배포 절차 추가 | `server/Dockerfile`, `server/entrypoint.sh`, `server/compose.prod.yml`, `server/Caddyfile`, `.github/workflows/deploy-server.yml`, `server/.env.example` |
 | 2026-11-21 | 운영 전환 전 보안 체크리스트 강화 — 운영 환경 `JWT_SECRET_KEY`·`ALLOW_DEV_LOGIN` Fail-Fast 검증, `/health` 내부 예외 미노출, Uvicorn 신뢰 프록시 IP 제한 및 Caddy 보안 헤더/요청 크기 상한 추가 | `docs/04-guides/01-backend-setup.md` |
+| 2026-11-21 | GitHub Actions CI/CD에서 `uv` 실행 시 `[project.optional-dependencies] dev`(`ruff`, `pytest`) 설치·실행을 위한 `--extra dev` 옵션 명세 추가 | `docs/04-guides/01-backend-setup.md` |
