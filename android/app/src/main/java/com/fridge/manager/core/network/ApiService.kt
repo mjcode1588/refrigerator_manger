@@ -29,6 +29,9 @@ interface ApiService {
     @POST("auth/refresh")
     suspend fun refreshTokens(@Body body: RefreshRequest): Response<TokenResponseDto>
 
+    @POST("auth/logout")
+    suspend fun logout(@Body body: RefreshRequest): Response<Unit>
+
     @GET("users/me")
     suspend fun getMe(): UserMeDto
 

@@ -1,7 +1,7 @@
 # 02. Android 앱 개발 가이드 (Kotlin + Compose + Room + WorkManager)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-21  
+> **최종 수정일**: 2026-11-22  
 > **관련 문서**: [전체 시스템 아키텍처](../02-architecture/01-system-architecture.md), [유통기한 로컬 알림 명세](../03-features/03-expiry-notification.md)
 
 ---
@@ -63,13 +63,13 @@ app/src/main/java/com/fridge/manager/
 
 - `local.properties`에 아래 민감 키를 보관하고 `BuildConfig`로 주입합니다 (루트 `.gitignore`에 `android/local.properties`, `android/.gradle/`, `android/.kotlin/`을 등록해 Git 커밋을 원천 차단):
   ```properties
-  API_BASE_URL=https://api.yourdomain.duckdns.org/api/v1/
+  API_BASE_URL=https://myfridges.duckdns.org/api/v1/
   KAKAO_NATIVE_APP_KEY=...
   ```
 - **최소 지원 SDK**: `minSdk = 26` (Android 8.0, Notification Channel 및 `java.time` 기본 지원), `targetSdk = 35`.
 - **빌드 유형별 네트워크 보안 (`network_security_config.xml`)**:
   - `AndroidManifest.xml`에서 전역 `android:usesCleartextTraffic="true"`를 제거합니다.
-  - `src/main/res/xml/network_security_config.xml`에서는 기본적으로 평문 HTTP를 차단(`cleartextTrafficPermitted="false"`)하여 `release` APK에서 HTTPS만 허용하고, `src/debug/res/xml/network_security_config.xml`에서만 로컬 에뮬레이터(`10.0.2.2`, `127.0.0.1`) 및 개발 서버 도메인의 HTTP 통신을 예외 허용합니다.
+  - `src/main/res/xml/network_security_config.xml`에서 `cleartextTrafficPermitted="false"`로 평문 HTTP를 차단하며, **Debug/Release 모두 HTTPS만 허용**합니다(debug 예외 없음). 개발 중에도 HTTPS 서버(도메인 + Caddy 자동 인증서) 또는 신뢰 가능한 인증서를 사용하는 터널을 `API_BASE_URL`로 지정해야 합니다.
 - **클라우드/ADB 백업을 통한 토큰·DB 유출 차단**:
   - `AndroidManifest.xml`에서 `android:allowBackup="false"`를 적용하거나, `data_extraction_rules.xml` 및 `backup_rules.xml`을 지정하여 인증 토큰 저장소(`auth_prefs.preferences_pb`)와 로컬 Room DB(`fridge_manager.db`)가 클라우드 자동 백업 및 `adb backup`으로 추출되지 않도록 제외합니다.
 - **로그아웃 시 완전한 세션·로컬 데이터 정리**:
@@ -85,3 +85,6 @@ app/src/main/java/com/fridge/manager/
 | 날짜 | 변경 내용 | 주요 파일 |
 |---|---|---|
 | 2026-11-21 | APK 보안 하드닝 지침 추가 — `network_security_config.xml` 기반 Release HTTPS 강제, 백업(`allowBackup`/`data_extraction_rules`) 토큰·DB 제외, 로그아웃 시 서버 토큰 폐기 및 Room·WorkManager 초기화, `Authorization` 로그 마스킹, `proguard-rules.pro` 및 `.gitignore` 규칙 명시 | `docs/04-guides/02-android-setup.md` |
+| 2026-11-22 | Android APK 보안 하드닝 구현 — `network_security_config`(평문 HTTP 차단), `allowBackup=false`, 로그아웃 시 서버 호출·토큰·Room·WorkManager 일괄 정리, `Authorization` 로그 마스킹, ProGuard 규칙 | `AndroidManifest.xml`, `res/xml/network_security_config.xml`, `proguard-rules.pro`, `AppModule.kt`, `ApiService.kt`, `FridgeRepository.kt`, `MainViewModel.kt` |
+| 2026-11-22 | Debug 빌드도 HTTPS 강제 — `src/debug` 네트워크 보안 예외(10.0.2.2/localhost/127.0.0.1 HTTP 허용) 제거 | `android/app/src/debug/res/xml/network_security_config.xml`(삭제) |
+| 2026-11-22 | `API_BASE_URL`을 `https://myfridges.duckdns.org/api/v1/`로 확정 | `android/local.properties.example`, `docs/04-guides/02-android-setup.md` |

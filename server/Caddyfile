@@ -1,5 +1,18 @@
 # 테스트(IP 접속): SITE_ADDRESS=:80 (기본값)
 # 운영(도메인 HTTPS): SITE_ADDRESS=api.yourdomain.duckdns.org
 {$SITE_ADDRESS::80} {
+    # 사진 업로드 상한(상세 500KB)을 고려한 요청 본문 크기 제한
+    request_body {
+        max_size 1MB
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer"
+        -Server
+    }
+
     reverse_proxy api:8000
 }

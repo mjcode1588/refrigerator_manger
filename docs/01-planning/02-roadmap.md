@@ -1,7 +1,7 @@
 # 02. 개발 로드맵 (Development Roadmap)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-21  
+> **최종 수정일**: 2026-11-22  
 > **관련 문서**: [프로젝트 개요](./01-project-overview.md), [OCI Always Free 인프라 설계](../02-architecture/02-oci-always-free-infra.md), [UI/UX 디자인 지침](../04-guides/05-ui-design-guidelines.md)
 
 ---
@@ -70,15 +70,15 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - [x] **Android(`android/`) 구현**: 카메라/앨범 선택 및 클라이언트 2단계 WebP 압축(`1280px`/`400px`), `새 품목 등록` 바텀시트 사진 등록·프리뷰 UI, 목록 썸네일 및 품목 상세페이지 고해상도 이미지 조회 구현 + 단위/빌드 테스트
 
 ### Phase 5: 통합 테스트, 보안 하드닝 및 실사용 배포
-- [ ] **백엔드 보안 하드닝 (`server/`)**:
-  - [ ] 운영 환경(`APP_ENV != "local"`) 기동 시 기본/약한 `JWT_SECRET_KEY` 및 `ALLOW_DEV_LOGIN=true` 차단(Fail-Fast 검증)
-  - [ ] `POST /auth/logout` Refresh Token 소유권(`user_id`) 검증 및 `POST /auth/refresh` 폐기 토큰 재사용 탈취 감지(Reuse Detection)
-  - [ ] `POST /households/join` 원자적 `used_count` 차감(동시 참여 경합 방지) 및 `/auth/*`·`/households/join` Rate Limiting(`429`) 적용
-  - [ ] `GET /api/v1/health` 실패 시 DB 내부 예외 문자열(`detail`) 미노출, Uvicorn `--forwarded-allow-ips` 제한 및 Caddy 보안 헤더/요청 크기 상한 적용
-- [ ] **Android APK 보안 하드닝 (`android/`)**:
-  - [ ] `network_security_config.xml` 분리(Debug 로컬 HTTP 허용 / Release HTTPS 강제) 및 `allowBackup="false"`(또는 백업 제외 규칙) 적용
-  - [ ] 로그아웃 시 서버 `/auth/logout` 호출 + `TokenStorage.clear()` + Room DB 초기화 + `ExpiryCheckWorker.cancel()` 일괄 정리
-  - [ ] `HttpLoggingInterceptor.redactHeader("Authorization")` 마스킹, `proguard-rules.pro` 직렬화/Retrofit 규칙 추가 및 `.gitignore`에 `android/local.properties` 등록
+- [x] **백엔드 보안 하드닝 (`server/`)**:
+  - [x] 운영 환경(`APP_ENV != "local"`) 기동 시 기본/약한 `JWT_SECRET_KEY` 및 `ALLOW_DEV_LOGIN=true` 차단(Fail-Fast 검증)
+  - [x] `POST /auth/logout` Refresh Token 소유권(`user_id`) 검증 및 `POST /auth/refresh` 폐기 토큰 재사용 탈취 감지(Reuse Detection)
+  - [x] `POST /households/join` 원자적 `used_count` 차감(동시 참여 경합 방지) 및 `/auth/*`·`/households/join` Rate Limiting(`429`) 적용
+  - [x] `GET /api/v1/health` 실패 시 DB 내부 예외 문자열(`detail`) 미노출, Uvicorn `--forwarded-allow-ips` 제한 및 Caddy 보안 헤더/요청 크기 상한 적용
+- [x] **Android APK 보안 하드닝 (`android/`)**:
+  - [x] `network_security_config.xml` 적용(Debug·Release 모두 HTTPS 강제) 및 `allowBackup="false"`(또는 백업 제외 규칙) 적용
+  - [x] 로그아웃 시 서버 `/auth/logout` 호출 + `TokenStorage.clear()` + Room DB 초기화 + `ExpiryCheckWorker.cancel()` 일괄 정리
+  - [x] `HttpLoggingInterceptor.redactHeader("Authorization")` 마스킹, `proguard-rules.pro` 직렬화/Retrofit 규칙 추가 및 `.gitignore`에 `android/local.properties` 등록
 - [x] **GitHub Actions CI/CD (`deploy-server.yml`) 보완**:
   - [x] `uv sync --frozen --extra dev` 및 `uv run --extra dev` 적용으로 `[project.optional-dependencies] dev`(`ruff`, `pytest`) 미설치 오류(`Failed to spawn: ruff`) 해결 및 `ruff check` 린트 통과 확인
 - [ ] Android ↔ OCI FastAPI ↔ 선택 DB(Oracle ADB / Supabase) 종단간(E2E) 연동 검증
@@ -105,3 +105,7 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - **2026-11-21**: **Phase 4.5 백엔드·Android 구현 완료** — `detail_image_key`/`thumb_image_key` Alembic 마이그레이션(`0003_add_item_image_keys`), `/items/photo-upload-url` 및 미디어 업로드/서빙 API(`pytest` 10건 통과), Android 2단계 WebP 압축(`ImageCompressor`), 카메라·앨범 피커, 등록 프리뷰 및 목록 썸네일·상세 고해상도 이미지 조회 구현(`testDebugUnitTest` 통과).
 - **2026-11-21**: **Phase 5에 백엔드·Android APK 보안 하드닝 신규 요구사항 추가** — 기존 미구현 계획 항목을 제외하고 새롭게 도출된 보안 설계(운영 Fail-Fast 검증, 토큰 소유권·재사용 탈취 감지, 초대 코드 원자적 차감 및 Rate Limiting, `/health` 내부 예외 마스킹, `network_security_config.xml` Release HTTPS 강제, 백업 제외, 로그아웃 시 서버·Room·WorkManager 일괄 정리, 로그 헤더 마스킹 및 `proguard-rules.pro`)를 관련 문서 및 로드맵에 반영.
 - **2026-11-21**: **Phase 5 GitHub Actions CI/CD `uv` 개발 의존성(`--extra dev`) 보완 완료** — `.github/workflows/deploy-server.yml`에 `uv sync --frozen --extra dev` 및 `uv run --extra dev` 적용, `server/app/api/routers/items.py`(`HTTPException` 임포트) 및 `server/tests/test_locations_and_items.py` 줄 길이 정리로 `ruff check`(`All checks passed!`)와 `pytest` 10건 통과 확인.
+- **2026-11-22**: **Phase 5 백엔드 보안 하드닝 구현 완료** — 운영 Fail-Fast 검증, Refresh Reuse Detection·로그아웃 소유권 검증, 초대 코드 원자적 차감, IP 기반 Rate Limiting(429), /health 예외 마스킹, Caddy 보안 헤더·요청 상한, Uvicorn 신뢰 프록시 제한(	ests/test_security_hardening.py 포함 pytest 16건·
+uff 통과). Android APK 하드닝은 미착수.
+- **2026-11-22**: **Phase 5 Android APK 보안 하드닝 구현 완료** — Debug·Release 모두 HTTPS 강제(평문 HTTP 예외 없음), `allowBackup=false`, 로그아웃 일괄 정리, `Authorization` 마스킹, `proguard-rules.pro` 신규 작성. `testDebugUnitTest`·`assembleRelease` 통과.
+- **2026-11-22**: Debug 빌드의 로컬 HTTP 예외 제거(디버깅 중 평문 노출 방지). 개발 시에도 HTTPS `API_BASE_URL` 필요.

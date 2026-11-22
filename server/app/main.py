@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI, status
@@ -13,16 +14,21 @@ from app.api.routers.locations import router as locations_router
 from app.api.routers.media import router as media_router
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
+from app.core.rate_limit import RateLimiter
 from app.db.engine import check_db_health
 from app.db.session import engine as default_engine
 
+logger = logging.getLogger(__name__)
+
 
 def create_app() -> FastAPI:
+    settings.validate_production_security()
     app = FastAPI(
         title=settings.app_name,
         openapi_url=f"{settings.api_v1_prefix}/openapi.json",
     )
 
+    app.state.rate_limiter = RateLimiter()
     register_exception_handlers(app)
 
     if settings.cors_origins_list:
@@ -40,13 +46,13 @@ def create_app() -> FastAPI:
         db_provider = getattr(app.state, "db_provider", settings.db_provider)
         try:
             check_db_health(db_engine, db_provider)
-        except Exception as exc:  # pragma: no cover
+        except Exception:
+            logger.exception("DB health check failed")
             return JSONResponse(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 content={
                     "status": "unhealthy",
                     "db_provider": db_provider.value,
-                    "detail": str(exc),
                 },
             )
         return JSONResponse(

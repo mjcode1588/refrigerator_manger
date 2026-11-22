@@ -1,7 +1,7 @@
 # 01. 백엔드 개발 및 다중 DB 배포 가이드 (FastAPI + Oracle ADB / Supabase)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-21  
+> **최종 수정일**: 2026-11-22  
 > **관련 문서**: [OCI Always Free 및 무료 DB 인프라 설계](../02-architecture/02-oci-always-free-infra.md), [DB ERD 및 호환성 설계](../02-architecture/03-database-erd.md)
 
 ---
@@ -117,7 +117,7 @@ KAKAO_REST_API_KEY=<kakao-app-key>
   COMPOSE_PROFILES=
   DB_PROVIDER=oracle
   DATABASE_URL=oracle+oracledb://ADMIN:<비밀번호>@<ADB_DSN>
-  SITE_ADDRESS=api.yourdomain.duckdns.org
+  SITE_ADDRESS=myfridges.duckdns.org
   ```
 - **기동 명령**:
   ```bash
@@ -133,7 +133,7 @@ KAKAO_REST_API_KEY=<kakao-app-key>
 
 ### 5.4 운영 전환 전 보안 체크리스트
 테스트 단계(`SITE_ADDRESS=:80`)에서 실제 운영으로 전환하기 전에 아래 항목을 반드시 적용합니다.
-1. **HTTP → HTTPS 전환**: 무료 도메인(예: DuckDNS)을 VM 공인 IP에 연결하고, `server/.env`의 `SITE_ADDRESS`를 `:80`에서 실제 도메인(`api.yourdomain.duckdns.org`)으로 변경해 Caddy 자동 TLS(HTTPS)를 활성화합니다.
+1. **HTTP → HTTPS 전환**: 무료 도메인(예: DuckDNS)을 VM 공인 IP에 연결하고, `server/.env`의 `SITE_ADDRESS`를 `:80`에서 실제 도메인(`myfridges.duckdns.org`)으로 변경해 Caddy 자동 TLS(HTTPS)를 활성화합니다.
 2. **운영 환경(`APP_ENV=production`) 설정 Fail-Fast 강제 검증**:
    - `APP_ENV != "local"`일 때 기본 `JWT_SECRET_KEY`(`"dev-insecure-secret-change-in-production"`) 또는 32바이트 미만의 약한 시크릿 키가 설정된 경우 서버 기동을 즉시 차단합니다.
    - `APP_ENV == "production"`에서는 `ALLOW_DEV_LOGIN=false`를 강제하여 비밀번호 없는 체험 로그인(`/auth/dev-login`)이 운영 환경에 노출되지 않도록 차단합니다.
@@ -169,3 +169,5 @@ KAKAO_REST_API_KEY=<kakao-app-key>
 | 2026-11-21 | OCI VM 배포 구성(`local-db` 테스트 ↔ OCI ADB 운영 전환), 운영 전환 전 보안 체크리스트 및 GitHub Actions 자동 배포 절차 추가 | `server/Dockerfile`, `server/entrypoint.sh`, `server/compose.prod.yml`, `server/Caddyfile`, `.github/workflows/deploy-server.yml`, `server/.env.example` |
 | 2026-11-21 | 운영 전환 전 보안 체크리스트 강화 — 운영 환경 `JWT_SECRET_KEY`·`ALLOW_DEV_LOGIN` Fail-Fast 검증, `/health` 내부 예외 미노출, Uvicorn 신뢰 프록시 IP 제한 및 Caddy 보안 헤더/요청 크기 상한 추가 | `docs/04-guides/01-backend-setup.md` |
 | 2026-11-21 | GitHub Actions CI/CD에서 `uv` 실행 시 `[project.optional-dependencies] dev`(`ruff`, `pytest`) 설치·실행을 위한 `--extra dev` 옵션 명세 추가 | `docs/04-guides/01-backend-setup.md` |
+| 2026-11-22 | 신규 환경변수 RATE_LIMIT_ENABLED, RATE_LIMIT_AUTH_PER_MINUTE, RATE_LIMIT_JOIN_PER_MINUTE, FORWARDED_ALLOW_IPS(기본 172.16.0.0/12) 추가, Caddy 보안 헤더·1MB 요청 상한 적용. 운영 배포 시 ALLOW_DEV_LOGIN=false + 32자 이상 JWT_SECRET_KEY 미설정이면 기동 차단 | server/app/core/config.py, server/app/core/rate_limit.py, server/app/main.py, server/app/api/routers/auth.py, server/app/api/routers/households.py, server/Caddyfile, server/entrypoint.sh, server/tests/test_security_hardening.py |
+| 2026-11-22 | 운영 도메인 `myfridges.duckdns.org` 확정 — `SITE_ADDRESS` 예시 반영 | `server/.env.example`, `docs/04-guides/01-backend-setup.md` |

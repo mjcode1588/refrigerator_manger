@@ -7,11 +7,11 @@
 
     <application
         android:name=".FridgeApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:label="우리집 식재료 관리"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
-        android:usesCleartextTraffic="true">
+        android:networkSecurityConfig="@xml/network_security_config">
 
         <activity
             android:name=".MainActivity"

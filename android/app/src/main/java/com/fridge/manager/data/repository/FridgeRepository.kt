@@ -8,6 +8,7 @@ import com.fridge.manager.core.database.LocationEntity
 import com.fridge.manager.core.media.CompressedItemPhotos
 import com.fridge.manager.core.network.ApiService
 import com.fridge.manager.core.network.ConsumeItemRequest
+import com.fridge.manager.core.network.RefreshRequest
 import com.fridge.manager.core.network.CreateHouseholdRequest
 import com.fridge.manager.core.network.CreateItemRequest
 import com.fridge.manager.core.network.CreateLocationRequest
@@ -23,6 +24,7 @@ import java.net.URI
 import com.fridge.manager.core.network.SocialGoogleRequest
 import com.fridge.manager.core.network.SocialKakaoRequest
 import com.fridge.manager.core.network.UpdateItemRequest
+import com.fridge.manager.core.database.AppDatabase
 import com.fridge.manager.core.datastore.TokenStorage
 import com.fridge.manager.domain.model.ActivityLogItem
 import com.fridge.manager.domain.model.FoodItem
@@ -30,8 +32,10 @@ import com.fridge.manager.domain.model.HouseholdInfo
 import com.fridge.manager.domain.model.StorageLocationNode
 import com.fridge.manager.domain.usecase.BuildLocationTreeUseCase
 import com.fridge.manager.domain.usecase.CalculateDDayUseCase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
@@ -46,6 +50,7 @@ class FridgeRepository @Inject constructor(
     private val apiService: ApiService,
     private val locationDao: LocationDao,
     private val itemDao: ItemDao,
+    private val appDatabase: AppDatabase,
     private val tokenStorage: TokenStorage,
     private val buildLocationTreeUseCase: BuildLocationTreeUseCase,
     private val calculateDDayUseCase: CalculateDDayUseCase,
@@ -67,6 +72,16 @@ class FridgeRepository @Inject constructor(
             throw ServerUnavailableException("최신 버전의 앱으로 업데이트가 필요합니다.")
         }
         return health
+    }
+
+    /** 서버 Refresh Token 폐기(실패해도 무시) 후 토큰·Room 캐시를 일괄 삭제한다. */
+    suspend fun logout() {
+        val refreshToken = tokenStorage.getRefreshToken()
+        if (!refreshToken.isNullOrBlank()) {
+            runCatching { withTimeout(4_000L) { apiService.logout(RefreshRequest(refreshToken)) } }
+        }
+        tokenStorage.clear()
+        withContext(Dispatchers.IO) { appDatabase.clearAllTables() }
     }
 
     suspend fun devLogin(nickname: String): List<HouseholdInfo> {

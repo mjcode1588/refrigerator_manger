@@ -2,6 +2,13 @@ from enum import StrEnum
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+WEAK_JWT_SECRETS = {
+    "dev-insecure-secret-change-in-production",
+    "change-this-to-a-random-64-byte-hex-secret",
+    "secret",
+    "changeme",
+}
+
 
 class DbProvider(StrEnum):
     SQLITE = "sqlite"
@@ -58,9 +65,35 @@ class Settings(BaseSettings):
     media_max_detail_bytes: int = 500 * 1024
     media_max_thumb_bytes: int = 100 * 1024
 
+    # Rate Limiting (IP 기준 슬라이딩 윈도우, 단일 프로세스 메모리)
+    rate_limit_enabled: bool = True
+    rate_limit_auth_per_minute: int = 20
+    rate_limit_join_per_minute: int = 10
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.strip().lower() != "local"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
+
+    def validate_production_security(self) -> None:
+        """운영 환경(APP_ENV != local)에서 취약한 설정이면 기동을 차단한다 (Fail-Fast)."""
+        if not self.is_production:
+            return
+        problems: list[str] = []
+        secret = self.jwt_secret_key
+        if (
+            secret in WEAK_JWT_SECRETS
+            or secret.startswith(("dev-insecure", "change-this"))
+            or len(secret) < 32
+        ):
+            problems.append("JWT_SECRET_KEY가 기본값이거나 너무 짧습니다(32자 이상 필요).")
+        if self.allow_dev_login:
+            problems.append("운영 환경에서는 ALLOW_DEV_LOGIN=false 여야 합니다.")
+        if problems:
+            raise RuntimeError("운영 환경 보안 설정 오류: " + " ".join(problems))
 
 
 settings = Settings()

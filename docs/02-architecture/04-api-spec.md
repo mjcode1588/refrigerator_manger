@@ -1,7 +1,7 @@
 # 04. REST API 명세 (API Specification)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-21  
+> **최종 수정일**: 2026-11-22  
 > **관련 문서**: [DB ERD](./03-database-erd.md), [인증 및 가구 공유](../03-features/01-auth-and-household.md), [보관 장소 및 재고](../03-features/02-storage-and-inventory.md)
 
 ---
@@ -151,3 +151,4 @@
 | 2026-11-21 | `/items/{item_id}/consume` 요청 스펙에 남은 양 직접 기록(`remaining_quantity`) 및 소비 메모(`note`) 필드 추가 | `docs/02-architecture/04-api-spec.md` |
 | 2026-11-21 | 품목 응답(`ItemResponse`)에 기준 수량(`initial_quantity`) 필드 추가 (남은 양 ProgressBar 백엔드 동기화용) | `docs/02-architecture/04-api-spec.md`, `docs/02-architecture/03-database-erd.md` |
 | 2026-11-21 | 보안 하드닝 규격 반영 — `/health` DB 내부 에러 문자열(`detail`) 미노출, `/auth/*`·`/households/join` Rate Limiting(`429`), `/auth/refresh` 탈취 감지, `/auth/logout` 토큰 소유권 검증, `/households/join` 원자적 사용 횟수 차감 명세 추가 | `docs/02-architecture/04-api-spec.md` |
+| 2026-11-22 | 백엔드 구현 반영 — 오류 코드 RATE_LIMITED(429), FORBIDDEN(403, 타인 refresh token 로그아웃), /health 503 응답에서 detail 제거 | server/app/core/config.py, server/app/core/rate_limit.py, server/app/main.py, server/app/api/routers/auth.py, server/app/api/routers/households.py, server/Caddyfile, server/entrypoint.sh, server/tests/test_security_hardening.py |

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Release: HTTPS 강제(평문 HTTP 차단). Debug 빌드는 src/debug 의 동일 이름 파일로 대체됨 -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

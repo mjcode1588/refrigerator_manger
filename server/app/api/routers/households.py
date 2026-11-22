@@ -1,11 +1,12 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_household_membership, require_household_owner
 from app.core.errors import AppError
+from app.core.rate_limit import limit_join
 from app.core.security import generate_invite_code
 from app.db.models import (
     Household,
@@ -249,7 +250,7 @@ def create_invite(
     )
 
 
-@router.post("/join", response_model=HouseholdResponse)
+@router.post("/join", response_model=HouseholdResponse, dependencies=[Depends(limit_join)])
 def join_household(
     body: JoinHouseholdRequest,
     user: User = Depends(get_current_user),
@@ -277,7 +278,18 @@ def join_household(
     if existing is not None:
         raise AppError("ALREADY_HOUSEHOLD_MEMBER", "이미 참여 중인 가구입니다.", 409)
 
-    invite.used_count += 1
+    claimed = db.execute(
+        update(InviteCode)
+        .where(
+            InviteCode.id == invite.id,
+            InviteCode.used_count < InviteCode.max_uses,
+        )
+        .values(used_count=InviteCode.used_count + 1)
+        .execution_options(synchronize_session=False)
+    )
+    if claimed.rowcount != 1:
+        db.rollback()
+        raise AppError("INVITE_CODE_EXHAUSTED", "사용 횟수를 초과한 초대 코드입니다.", 400)
     db.add(
         HouseholdMember(
             household_id=invite.household_id,

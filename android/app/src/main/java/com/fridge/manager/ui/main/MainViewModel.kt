@@ -249,7 +249,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun logout() = viewModelScope.launch {
-        tokenStorage.clear()
+        repository.logout()
+        ExpiryCheckWorker.cancel(appContext)
         _households.value = emptyList()
         _activities.value = emptyList()
     }

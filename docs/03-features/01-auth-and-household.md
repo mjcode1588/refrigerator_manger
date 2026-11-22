@@ -1,7 +1,7 @@
 # 01. 인증 및 가족/동거인 공동 관리 명세
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-21  
+> **최종 수정일**: 2026-11-22  
 > **관련 문서**: [DB ERD](../02-architecture/03-database-erd.md), [REST API 명세](../02-architecture/04-api-spec.md)
 
 ---
@@ -107,3 +107,5 @@
 | 2026-11-21 | `/health` 점검 모드·최소 앱 버전 필드 추가, 4초 짧은 헬스체크 타임아웃 및 재방문 사용자 오프라인 우선 진입 구현 | `docs/03-features/01-auth-and-household.md`, `server/app/core/config.py`, `server/app/main.py`, `android/...` |
 | 2026-11-21 | Google 로그인 버튼 제거, `카카오로 시작하기` 버튼 임시 무반응 처리, `/auth/dev-login` 404 해소를 위해 `ALLOW_DEV_LOGIN` 설정 도입 (`true` 기본값) | `docs/03-features/01-auth-and-household.md`, `server/app/core/config.py`, `server/app/api/routers/auth.py`, `android/app/src/main/java/com/fridge/manager/ui/screens/AuthOnboardingScreen.kt` |
 | 2026-11-21 | 보안 하드닝 명세 추가 — 운영 환경 Fail-Fast 검증, Refresh Token 재사용 탈취 감지(Reuse Detection), 로그아웃 소유권 검증 및 로컬 Room 캐시/워커 일괄 정리, 초대 코드 원자적 차감 및 Rate Limiting 정책 반영 | `docs/03-features/01-auth-and-household.md` |
+| 2026-11-22 | 백엔드 보안 하드닝 구현 완료 (Fail-Fast, Reuse Detection, 로그아웃 소유권 403, 초대 코드 원자적 차감, Rate Limiting 429) | server/app/core/config.py, server/app/core/rate_limit.py, server/app/main.py, server/app/api/routers/auth.py, server/app/api/routers/households.py, server/Caddyfile, server/entrypoint.sh, server/tests/test_security_hardening.py |
+| 2026-11-22 | Android 로그아웃 일괄 정리(/auth/logout 호출 + TokenStorage.clear() + Room clearAllTables() + ExpiryCheckWorker.cancel()) 구현 | android/.../FridgeRepository.kt, MainViewModel.kt |

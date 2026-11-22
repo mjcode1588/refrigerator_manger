@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.errors import AppError
+from app.core.rate_limit import limit_auth
 from app.core.security import create_access_token, generate_refresh_token, hash_token
 from app.db.models import Household, HouseholdMember, RefreshToken, SocialAccount, User
 from app.db.session import get_db
@@ -25,6 +26,7 @@ from app.schemas.auth import (
 from app.services.oauth import OAuthVerifier, SocialUserInfo, get_oauth_verifier
 
 router = APIRouter(tags=["auth"])
+auth_limit = [Depends(limit_auth)]
 
 
 def _as_utc(dt: datetime) -> datetime:
@@ -77,7 +79,7 @@ def _upsert_social_user(db: Session, info: SocialUserInfo) -> User:
     return user
 
 
-@router.post("/auth/social/google", response_model=TokenResponse)
+@router.post("/auth/social/google", response_model=TokenResponse, dependencies=auth_limit)
 async def login_with_google(
     body: SocialLoginGoogleRequest,
     db: Session = Depends(get_db),
@@ -88,7 +90,7 @@ async def login_with_google(
     return _issue_tokens(db, user)
 
 
-@router.post("/auth/social/kakao", response_model=TokenResponse)
+@router.post("/auth/social/kakao", response_model=TokenResponse, dependencies=auth_limit)
 async def login_with_kakao(
     body: SocialLoginKakaoRequest,
     db: Session = Depends(get_db),
@@ -99,7 +101,7 @@ async def login_with_kakao(
     return _issue_tokens(db, user)
 
 
-@router.post("/auth/dev-login", response_model=TokenResponse)
+@router.post("/auth/dev-login", response_model=TokenResponse, dependencies=auth_limit)
 def dev_login(
     body: DevLoginRequest,
     db: Session = Depends(get_db),
@@ -116,7 +118,7 @@ def dev_login(
     return _issue_tokens(db, user)
 
 
-@router.post("/auth/refresh", response_model=TokenResponse)
+@router.post("/auth/refresh", response_model=TokenResponse, dependencies=auth_limit)
 def refresh_tokens(
     body: RefreshTokenRequest,
     db: Session = Depends(get_db),
@@ -125,7 +127,19 @@ def refresh_tokens(
     stmt = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
     stored = db.execute(stmt).scalar_one_or_none()
     now = datetime.now(UTC)
-    if stored is None or stored.revoked_at is not None or _as_utc(stored.expires_at) < now:
+    if stored is not None and stored.revoked_at is not None:
+        # 폐기된 토큰 재사용 = 탈취 의심: 해당 사용자의 모든 활성 토큰 폐기
+        active = db.execute(
+            select(RefreshToken).where(
+                RefreshToken.user_id == stored.user_id,
+                RefreshToken.revoked_at.is_(None),
+            )
+        ).scalars()
+        for tok in active:
+            tok.revoked_at = now
+        db.commit()
+        raise AppError("INVALID_REFRESH_TOKEN", "유효하지 않거나 만료된 리프레시 토큰입니다.", 401)
+    if stored is None or _as_utc(stored.expires_at) < now:
         raise AppError("INVALID_REFRESH_TOKEN", "유효하지 않거나 만료된 리프레시 토큰입니다.", 401)
 
     user = db.get(User, stored.user_id)
@@ -137,15 +151,17 @@ def refresh_tokens(
     return _issue_tokens(db, user)
 
 
-@router.post("/auth/logout")
+@router.post("/auth/logout", dependencies=auth_limit)
 def logout(
     body: LogoutRequest,
-    _user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     token_hash = hash_token(body.refresh_token)
     stmt = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
     stored = db.execute(stmt).scalar_one_or_none()
+    if stored is not None and stored.user_id != user.id:
+        raise AppError("FORBIDDEN", "본인의 리프레시 토큰이 아닙니다.", 403)
     if stored is not None and stored.revoked_at is None:
         stored.revoked_at = datetime.now(UTC)
         db.commit()
