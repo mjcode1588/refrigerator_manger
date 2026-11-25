@@ -6,6 +6,7 @@ import com.fridge.manager.core.database.ItemEntity
 import com.fridge.manager.core.database.LocationDao
 import com.fridge.manager.core.database.LocationEntity
 import com.fridge.manager.core.media.CompressedItemPhotos
+import com.fridge.manager.core.network.ApiErrorEnvelope
 import com.fridge.manager.core.network.ApiService
 import com.fridge.manager.core.network.ConsumeItemRequest
 import com.fridge.manager.core.network.RefreshRequest
@@ -17,12 +18,13 @@ import com.fridge.manager.core.network.HealthResponseDto
 import com.fridge.manager.core.network.ItemDto
 import com.fridge.manager.core.network.JoinHouseholdRequest
 import com.fridge.manager.core.network.LocationNodeDto
+import com.fridge.manager.core.network.LoginRequest
 import com.fridge.manager.core.network.PhotoUploadUrlRequest
+import com.fridge.manager.core.network.RegisterRequest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.HttpException
 import java.net.URI
-import com.fridge.manager.core.network.SocialGoogleRequest
-import com.fridge.manager.core.network.SocialKakaoRequest
 import com.fridge.manager.core.network.UpdateItemRequest
 import com.fridge.manager.core.database.AppDatabase
 import com.fridge.manager.core.datastore.TokenStorage
@@ -37,6 +39,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -44,6 +47,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 class ServerUnavailableException(val userMessage: String) : Exception(userMessage)
+class AuthApiException(userMessage: String) : Exception(userMessage)
 
 @Singleton
 class FridgeRepository @Inject constructor(
@@ -90,16 +94,51 @@ class FridgeRepository @Inject constructor(
         return fetchAndSelectHousehold()
     }
 
-    suspend fun loginWithGoogle(idToken: String): List<HouseholdInfo> {
-        val tokens = apiService.loginWithGoogle(SocialGoogleRequest(idToken))
+    suspend fun login(username: String, password: String): List<HouseholdInfo> {
+        val tokens = executeAuthCall {
+            apiService.login(LoginRequest(username = username.trim(), password = password))
+        }
         tokenStorage.saveTokens(tokens.accessToken, tokens.refreshToken, tokens.user.nickname)
         return fetchAndSelectHousehold()
     }
 
-    suspend fun loginWithKakao(accessToken: String): List<HouseholdInfo> {
-        val tokens = apiService.loginWithKakao(SocialKakaoRequest(accessToken))
+    suspend fun register(
+        username: String,
+        password: String,
+        nickname: String,
+        registrationCode: String,
+    ): List<HouseholdInfo> {
+        val tokens = executeAuthCall {
+            apiService.register(
+                RegisterRequest(
+                    username = username.trim(),
+                    password = password,
+                    nickname = nickname.trim(),
+                    registrationCode = registrationCode.trim(),
+                ),
+            )
+        }
         tokenStorage.saveTokens(tokens.accessToken, tokens.refreshToken, tokens.user.nickname)
         return fetchAndSelectHousehold()
+    }
+
+    private suspend fun <T> executeAuthCall(block: suspend () -> T): T {
+        return try {
+            block()
+        } catch (err: HttpException) {
+            throw AuthApiException(extractErrorMessage(err) ?: "인증에 실패했습니다. 입력 내용을 확인해 주세요.")
+        }
+    }
+
+    private fun extractErrorMessage(err: HttpException): String? {
+        val raw = runCatching { err.response()?.errorBody()?.string() }.getOrNull() ?: return null
+        return runCatching {
+            errorJson.decodeFromString<ApiErrorEnvelope>(raw).error?.message
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+    }
+
+    private companion object {
+        val errorJson = Json { ignoreUnknownKeys = true }
     }
 
     suspend fun fetchAndSelectHousehold(): List<HouseholdInfo> {

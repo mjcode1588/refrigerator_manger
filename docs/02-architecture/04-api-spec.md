@@ -1,7 +1,7 @@
 # 04. REST API 명세 (API Specification)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-22  
+> **최종 수정일**: 2026-11-25  
 > **관련 문서**: [DB ERD](./03-database-erd.md), [인증 및 가구 공유](../03-features/01-auth-and-household.md), [보관 장소 및 재고](../03-features/02-storage-and-inventory.md)
 
 ---
@@ -40,8 +40,8 @@
 
 | Method | Endpoint | 설명 | 인증 |
 |---|---|---|---|
-| `POST` | `/auth/social/google` | Google ID Token 검증 후 로그인/자동 회원가입 및 JWT 발급 *(Kakao 단일 로그인 전환에 따라 비활성화 예정)* | 불필요 |
-| `POST` | `/auth/social/kakao` | Kakao Access Token(`app_id` 포함) 검증 후 로그인/자동 회원가입 및 JWT 발급 | 불필요 |
+| `POST` | `/auth/register` | 가족 등록코드(`FAMILY_REGISTRATION_CODE`) 검증 및 최대 인원(`MAX_REGISTERED_USERS`, 기본 2명) 확인 후 아이디·비밀번호 계정 생성(`201 Created`) 및 JWT 발급. 에러: `REGISTRATION_DISABLED`(403), `INVALID_REGISTRATION_CODE`(403), `REGISTRATION_CLOSED`(403), `USERNAME_ALREADY_EXISTS`(409) | 불필요 |
+| `POST` | `/auth/login` | 아이디·비밀번호(`scrypt` 상수시간 검증) 로그인 및 JWT 발급(`200 OK`). 5회 실패 시 15분 계정 잠금. 에러: `INVALID_CREDENTIALS`(401), `ACCOUNT_LOCKED`(429) | 불필요 |
 | `POST` | `/auth/refresh` | Refresh Token으로 새 Access/Refresh Token 원자적 재발급 (Rotation). **이미 폐기된 토큰 재사용 감지 시 해당 사용자의 전체 Refresh Token 일괄 폐기** | 불필요 |
 | `POST` | `/auth/logout` | 현재 사용자의 본인 소유(`user_id` 일치) Refresh Token 폐기 | 필요 |
 | `GET` | `/users/me` | 내 프로필 및 소속 가구 목록 조회 | 필요 |
@@ -152,3 +152,4 @@
 | 2026-11-21 | 품목 응답(`ItemResponse`)에 기준 수량(`initial_quantity`) 필드 추가 (남은 양 ProgressBar 백엔드 동기화용) | `docs/02-architecture/04-api-spec.md`, `docs/02-architecture/03-database-erd.md` |
 | 2026-11-21 | 보안 하드닝 규격 반영 — `/health` DB 내부 에러 문자열(`detail`) 미노출, `/auth/*`·`/households/join` Rate Limiting(`429`), `/auth/refresh` 탈취 감지, `/auth/logout` 토큰 소유권 검증, `/households/join` 원자적 사용 횟수 차감 명세 추가 | `docs/02-architecture/04-api-spec.md` |
 | 2026-11-22 | 백엔드 구현 반영 — 오류 코드 RATE_LIMITED(429), FORBIDDEN(403, 타인 refresh token 로그아웃), /health 503 응답에서 detail 제거 | server/app/core/config.py, server/app/core/rate_limit.py, server/app/main.py, server/app/api/routers/auth.py, server/app/api/routers/households.py, server/Caddyfile, server/entrypoint.sh, server/tests/test_security_hardening.py |
+| 2026-11-25 | 소셜 로그인(`/auth/social/google`, `/auth/social/kakao`) 제거 및 가족 전용 자체 인증 엔드포인트(`POST /auth/register`, `POST /auth/login`) 및 에러 코드 명세 추가 | `docs/02-architecture/04-api-spec.md` |

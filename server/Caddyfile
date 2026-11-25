@@ -14,5 +14,19 @@
         -Server
     }
 
-    reverse_proxy api:8000
+    redir /releases/{$APK_DOWNLOAD_PATH:apk} /releases/{$APK_DOWNLOAD_PATH:apk}/ 308
+
+    handle_path /releases/{$APK_DOWNLOAD_PATH:apk}/* {
+        header X-Robots-Tag "noindex, nofollow"
+        header Cache-Control "no-store"
+        @apk path *.apk
+        header @apk Content-Type "application/vnd.android.package-archive"
+        header @apk Content-Disposition "attachment"
+        root * /srv/releases
+        file_server
+    }
+
+    handle {
+        reverse_proxy api:8000
+    }
 }

@@ -14,6 +14,29 @@ val localProperties = Properties().apply {
     if (file.exists()) file.inputStream().use { load(it) }
 }
 
+fun resolveConfig(name: String): String? {
+    val gradleProp = providers.gradleProperty(name).orNull?.trim()
+    if (!gradleProp.isNullOrEmpty()) return gradleProp
+
+    val envVar = System.getenv(name)?.trim()
+    if (!envVar.isNullOrEmpty()) return envVar
+
+    val localProp = localProperties.getProperty(name)?.trim()
+    if (!localProp.isNullOrEmpty()) return localProp
+
+    return null
+}
+
+val keystorePath = resolveConfig("ANDROID_KEYSTORE_PATH")
+val keystorePassword = resolveConfig("ANDROID_KEYSTORE_PASSWORD")
+val keyAliasValue = resolveConfig("ANDROID_KEY_ALIAS")
+val keyPasswordValue = resolveConfig("ANDROID_KEY_PASSWORD")
+val hasReleaseSigning = !keystorePath.isNullOrBlank() &&
+    file(keystorePath).exists() &&
+    !keystorePassword.isNullOrBlank() &&
+    !keyAliasValue.isNullOrBlank() &&
+    !keyPasswordValue.isNullOrBlank()
+
 android {
     namespace = "com.fridge.manager"
     compileSdk = 35
@@ -22,17 +45,31 @@ android {
         applicationId = "com.fridge.manager"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = resolveConfig("ANDROID_VERSION_CODE")?.toIntOrNull() ?: 1
+        versionName = resolveConfig("ANDROID_VERSION_NAME") ?: "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val apiBaseUrl = localProperties.getProperty("API_BASE_URL", "http://10.0.2.2:8000/api/v1/")
+        val apiBaseUrl = resolveConfig("API_BASE_URL") ?: "https://myfridges.duckdns.org/api/v1/"
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+    }
+
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigning) {
+                storeFile = file(keystorePath!!)
+                storePassword = keystorePassword
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
+            }
+        }
     }
 
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

@@ -1,46 +1,42 @@
 from fastapi.testclient import TestClient
 
-from app.core.errors import AppError
-from app.services.oauth import SocialUserInfo, get_oauth_verifier
-
-
-class FakeOAuthVerifier:
-    async def verify_google(self, id_token: str) -> SocialUserInfo:
-        if id_token == "valid-google-token":
-            return SocialUserInfo(
-                provider="GOOGLE",
-                provider_user_id="g-12345",
-                nickname="구글민수",
-                email="minsu@gmail.com",
-            )
-        raise AppError("INVALID_SOCIAL_TOKEN", "Invalid Google token", 401)
-
-    async def verify_kakao(self, access_token: str) -> SocialUserInfo:
-        if access_token == "valid-kakao-token":
-            return SocialUserInfo(
-                provider="KAKAO",
-                provider_user_id="k-98765",
-                nickname="카카오지영",
-                email="jiyoung@kakao.com",
-            )
-        raise AppError("INVALID_SOCIAL_TOKEN", "Invalid Kakao token", 401)
+from app.core.config import settings as global_settings
 
 
 def _auth_header(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def test_social_login_and_refresh_rotation(client: TestClient) -> None:
-    client.app.dependency_overrides[get_oauth_verifier] = lambda: FakeOAuthVerifier()
+def test_register_login_and_refresh_rotation(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(global_settings, "family_registration_code", "our-home-secret-2026")
 
-    bad = client.post("/api/v1/auth/social/google", json={"id_token": "bad"})
+    reg = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "Husband_01",
+            "password": "StrongPassword!1",
+            "nickname": "남편",
+            "registration_code": "our-home-secret-2026",
+        },
+    )
+    assert reg.status_code == 201, reg.text
+    reg_data = reg.json()
+    assert reg_data["user"]["nickname"] == "남편"
+
+    # 대소문자 구분 없이 로그인 가능
+    bad = client.post(
+        "/api/v1/auth/login",
+        json={"username": "husband_01", "password": "WrongPassword!"},
+    )
     assert bad.status_code == 401
+    assert bad.json()["error"]["code"] == "INVALID_CREDENTIALS"
 
-    ok = client.post("/api/v1/auth/social/google", json={"id_token": "valid-google-token"})
-    assert ok.status_code == 200
-    data = ok.json()
-    assert data["user"]["nickname"] == "구글민수"
-    refresh1 = data["refresh_token"]
+    ok = client.post(
+        "/api/v1/auth/login",
+        json={"username": "husband_01", "password": "StrongPassword!1"},
+    )
+    assert ok.status_code == 200, ok.text
+    refresh1 = ok.json()["refresh_token"]
 
     # Refresh token rotation
     refreshed = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh1})
@@ -54,17 +50,29 @@ def test_social_login_and_refresh_rotation(client: TestClient) -> None:
 
     me = client.get("/api/v1/users/me", headers=_auth_header(refreshed.json()["access_token"]))
     assert me.status_code == 200
-    assert me.json()["nickname"] == "구글민수"
+    assert me.json()["nickname"] == "남편"
 
 
-def test_household_invite_and_permissions(client: TestClient) -> None:
-    client.app.dependency_overrides[get_oauth_verifier] = lambda: FakeOAuthVerifier()
+def test_household_invite_and_permissions(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(global_settings, "family_registration_code", "our-home-secret-2026")
 
     owner_tokens = client.post(
-        "/api/v1/auth/social/google", json={"id_token": "valid-google-token"}
+        "/api/v1/auth/register",
+        json={
+            "username": "husband",
+            "password": "StrongPassword!1",
+            "nickname": "남편",
+            "registration_code": "our-home-secret-2026",
+        },
     ).json()
     member_tokens = client.post(
-        "/api/v1/auth/social/kakao", json={"access_token": "valid-kakao-token"}
+        "/api/v1/auth/register",
+        json={
+            "username": "wife",
+            "password": "StrongPassword!2",
+            "nickname": "아내",
+            "registration_code": "our-home-secret-2026",
+        },
     ).json()
 
     owner_h = _auth_header(owner_tokens["access_token"])

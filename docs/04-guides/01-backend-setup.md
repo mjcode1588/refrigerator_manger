@@ -1,7 +1,7 @@
 # 01. 백엔드 개발 및 다중 DB 배포 가이드 (FastAPI + Oracle ADB / Supabase)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-22  
+> **최종 수정일**: 2026-11-25  
 > **관련 문서**: [OCI Always Free 및 무료 DB 인프라 설계](../02-architecture/02-oci-always-free-infra.md), [DB ERD 및 호환성 설계](../02-architecture/03-database-erd.md)
 
 ---
@@ -144,6 +144,10 @@ KAKAO_REST_API_KEY=<kakao-app-key>
    - `entrypoint.sh`의 Uvicorn `--forwarded-allow-ips`를 `'*'` 대신 Docker 내부 브리지 대역(또는 신뢰된 프록시 IP)으로 제한하여 `X-Forwarded-For` 위조를 방지합니다.
    - `Caddyfile`에 기본 보안 헤더(`Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`)와 요청 본문 크기 상한(`request_body { max_size 2MB }`)을 적용합니다.
 5. **OCI Autonomous DB ACL 제한**: One-Way TLS 사용 시 OCI ADB 콘솔의 **Access Control List(ACL)**에 반드시 Compute VM의 공인 IP만 허용 등록하여 외부 IP 접근을 차단합니다.
+6. **Android Release APK 정적 배포 경로 (`APK_DOWNLOAD_PATH`)**:
+   - `server/compose.prod.yml`에서 `./releases:/srv/releases:ro`를 Caddy에 마운트하고 `server/Caddyfile`의 `handle_path /releases/{$APK_DOWNLOAD_PATH:apk}/*` 블록으로 서명된 APK(`*.apk`), `latest.json`, `index.html`을 서빙합니다(디렉토리 리스팅 비활성화, `X-Robots-Tag: noindex, nofollow`, `Cache-Control: no-store`).
+   - GitHub Actions(`.github/workflows/deploy-android-apk.yml`)가 `server/releases/`에 APK를 배포하며, `server/releases/`는 `.gitignore`로 제외되어 `deploy-server.yml`의 `git reset --hard origin/main`에 영향받지 않습니다.
+   - `server/.env`에서 `APK_DOWNLOAD_PATH`를 추측하기 어려운 문자열로 지정해 가족 외 접근을 제한하는 것을 권장합니다(미설정 시 기본값 `apk`).
 
 ---
 
@@ -171,3 +175,4 @@ KAKAO_REST_API_KEY=<kakao-app-key>
 | 2026-11-21 | GitHub Actions CI/CD에서 `uv` 실행 시 `[project.optional-dependencies] dev`(`ruff`, `pytest`) 설치·실행을 위한 `--extra dev` 옵션 명세 추가 | `docs/04-guides/01-backend-setup.md` |
 | 2026-11-22 | 신규 환경변수 RATE_LIMIT_ENABLED, RATE_LIMIT_AUTH_PER_MINUTE, RATE_LIMIT_JOIN_PER_MINUTE, FORWARDED_ALLOW_IPS(기본 172.16.0.0/12) 추가, Caddy 보안 헤더·1MB 요청 상한 적용. 운영 배포 시 ALLOW_DEV_LOGIN=false + 32자 이상 JWT_SECRET_KEY 미설정이면 기동 차단 | server/app/core/config.py, server/app/core/rate_limit.py, server/app/main.py, server/app/api/routers/auth.py, server/app/api/routers/households.py, server/Caddyfile, server/entrypoint.sh, server/tests/test_security_hardening.py |
 | 2026-11-22 | 운영 도메인 `myfridges.duckdns.org` 확정 — `SITE_ADDRESS` 예시 반영 | `server/.env.example`, `docs/04-guides/01-backend-setup.md` |
+| 2026-11-25 | Caddy 정적 APK 호스팅(`/releases/{$APK_DOWNLOAD_PATH:apk}/*`, `./releases:/srv/releases:ro`) 및 `APK_DOWNLOAD_PATH` 환경변수 설정 반영 | `server/compose.prod.yml`, `server/Caddyfile`, `server/.env.example`, `.gitignore`, `docs/04-guides/01-backend-setup.md` |

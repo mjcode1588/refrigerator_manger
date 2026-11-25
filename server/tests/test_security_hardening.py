@@ -22,8 +22,21 @@ def test_production_rejects_weak_settings() -> None:
         Settings(
             app_env="production", jwt_secret_key="x" * 64, allow_dev_login=True
         ).validate_production_security()
+    with pytest.raises(RuntimeError):
+        Settings(
+            app_env="production",
+            jwt_secret_key="x" * 64,
+            allow_dev_login=False,
+            family_registration_code="short",
+        ).validate_production_security()
     Settings(
         app_env="production", jwt_secret_key="x" * 64, allow_dev_login=False
+    ).validate_production_security()
+    Settings(
+        app_env="production",
+        jwt_secret_key="x" * 64,
+        allow_dev_login=False,
+        family_registration_code="our-home-secret-2026",
     ).validate_production_security()
     Settings(app_env="local").validate_production_security()
 
@@ -105,3 +118,118 @@ def test_health_failure_does_not_leak_exception(client: TestClient, monkeypatch)
     assert res.status_code == 503
     assert "secret-connection-string" not in res.text
     assert "detail" not in res.json()
+
+
+def test_social_endpoints_removed(client: TestClient) -> None:
+    assert client.post("/api/v1/auth/social/google", json={"id_token": "x"}).status_code == 404
+    assert client.post("/api/v1/auth/social/kakao", json={"access_token": "x"}).status_code == 404
+
+
+def test_family_registration_code_and_two_user_cap(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(global_settings, "family_registration_code", "")
+    disabled = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "husband",
+            "password": "StrongPassword!1",
+            "nickname": "남편",
+            "registration_code": "any-code",
+        },
+    )
+    assert disabled.status_code == 403
+    assert disabled.json()["error"]["code"] == "REGISTRATION_DISABLED"
+
+    monkeypatch.setattr(global_settings, "family_registration_code", "our-home-secret-2026")
+    monkeypatch.setattr(global_settings, "max_registered_users", 2)
+
+    wrong_code = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "husband",
+            "password": "StrongPassword!1",
+            "nickname": "남편",
+            "registration_code": "wrong-code",
+        },
+    )
+    assert wrong_code.status_code == 403
+    assert wrong_code.json()["error"]["code"] == "INVALID_REGISTRATION_CODE"
+
+    r1 = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "husband",
+            "password": "StrongPassword!1",
+            "nickname": "남편",
+            "registration_code": "our-home-secret-2026",
+        },
+    )
+    assert r1.status_code == 201, r1.text
+
+    dup = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "HUSBAND",
+            "password": "StrongPassword!1",
+            "nickname": "남편",
+            "registration_code": "our-home-secret-2026",
+        },
+    )
+    assert dup.status_code == 409
+    assert dup.json()["error"]["code"] == "USERNAME_ALREADY_EXISTS"
+
+    r2 = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "wife",
+            "password": "StrongPassword!2",
+            "nickname": "아내",
+            "registration_code": "our-home-secret-2026",
+        },
+    )
+    assert r2.status_code == 201, r2.text
+
+    # 3번째 외부인 가입은 올바른 등록코드여도 자동 차단
+    r3 = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "outsider",
+            "password": "StrongPassword!3",
+            "nickname": "외부인",
+            "registration_code": "our-home-secret-2026",
+        },
+    )
+    assert r3.status_code == 403
+    assert r3.json()["error"]["code"] == "REGISTRATION_CLOSED"
+
+
+def test_login_lockout_after_five_failures(client: TestClient, monkeypatch) -> None:
+    monkeypatch.setattr(global_settings, "family_registration_code", "our-home-secret-2026")
+    monkeypatch.setattr(global_settings, "rate_limit_enabled", False)
+    monkeypatch.setattr(global_settings, "auth_max_failed_attempts", 5)
+    monkeypatch.setattr(global_settings, "auth_lockout_minutes", 15)
+
+    reg = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "husband",
+            "password": "StrongPassword!1",
+            "nickname": "남편",
+            "registration_code": "our-home-secret-2026",
+        },
+    )
+    assert reg.status_code == 201
+
+    for _ in range(5):
+        res = client.post(
+            "/api/v1/auth/login",
+            json={"username": "husband", "password": "WrongPassword!"},
+        )
+        assert res.status_code == 401
+
+    # 5회 실패 후 올바른 비밀번호를 입력해도 잠금 유지
+    locked = client.post(
+        "/api/v1/auth/login",
+        json={"username": "husband", "password": "StrongPassword!1"},
+    )
+    assert locked.status_code == 429
+    assert locked.json()["error"]["code"] == "ACCOUNT_LOCKED"

@@ -1,7 +1,7 @@
 # 02. 개발 로드맵 (Development Roadmap)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-22  
+> **최종 수정일**: 2026-11-25  
 > **관련 문서**: [프로젝트 개요](./01-project-overview.md), [OCI Always Free 인프라 설계](../02-architecture/02-oci-always-free-infra.md), [UI/UX 디자인 지침](../04-guides/05-ui-design-guidelines.md)
 
 ---
@@ -86,6 +86,21 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - [ ] 무료 티어 리소스 사용량(CPU/RAM/DB 스토리지/트래픽) 및 7일 미사용 자동 중지/일시정지 대응 점검
 - [ ] 가족 구성원 기기 설치(APK 배포 또는 Google Play 내부 테스트 트랙) 및 추후 확장 기능(바코드/AI/레시피 등) 검토
 
+### Phase 5.1: 가족 전용 자체 인증 전환 (카카오 로그인 제거)
+부부 2인 전용 앱 목적에 맞게 카카오/구글 소셜 로그인을 제거하고 **아이디·비밀번호 + 가족 등록코드 가입(최대 2명 제한, 가입 완료 시 자동 잠금)** 기반의 백엔드 자체 인증으로 전환합니다.
+- [x] **설계 문서 업데이트**: `01-auth-and-household.md`, `04-api-spec.md`, `03-database-erd.md`, `02-roadmap.md`, `docs/README.md` 갱신
+- [x] **Stitch MCP 시안 개편**: 로그인 화면(`5355023e5b484c05b05ecc476efc7f15`)에서 소셜 로그인 버튼을 제거하고 `로그인` / `가족 등록` 세그먼트 탭 시안 확정 및 `05-ui-design-guidelines.md` 반영
+- [x] **FastAPI 백엔드(`server/`) 구현**: `User` 인증 컬럼 및 Alembic 마이그레이션(`0004_add_user_credentials`), `scrypt` + 상수시간 검증·5회 실패 15분 잠금, `POST /auth/register`·`POST /auth/login` 구현, 소셜 로그인 엔드포인트 제거 및 `ruff`·`pytest` 검증
+- [x] **Android(`android/`) 구현**: `ApiService`·`Dtos`·`FridgeRepository`·`MainViewModel`·`AuthOnboardingScreen` 개편(`로그인` / `가족 등록` 탭, 비밀번호 마스킹 토글, 에러 메시지 파싱) 및 `testDebugUnitTest`·`assembleDebug` 검증
+
+### Phase 5.2: Android Release APK 자동 서명 및 OCI 서버·네이버 MYBOX 배포 (GitHub Actions)
+가족 기기 배포를 완전 무인 자동화(토큰 만료 없음)하기 위해 GitHub Actions에서 단위 테스트 검증 후 Release 키스토어로 APK를 서명·검증(`apksigner`)하고, 기존 OCI 서버(`myfridges.duckdns.org`)에 SSH/SCP로 배포(Caddy 정적 서빙)하며 네이버 MYBOX Open API(`NAVER_MY_BOX` PAT)는 선택적 미러로 병행합니다.
+- [x] **설계·가이드 문서 업데이트**: `docs/04-guides/02-android-setup.md`, `docs/04-guides/01-backend-setup.md`, `docs/01-planning/02-roadmap.md` 갱신 및 `.gitignore` 키스토어(`*.jks`, `*.keystore`, `*.p12`)·`server/releases/` 차단
+- [x] **Android 서명·CI 주입 설정 (`android/app/build.gradle.kts`)**: `signingConfigs` Release 서명 구성 및 Gradle 프로퍼티/환경변수/로컬 설정(`API_BASE_URL`, `ANDROID_VERSION_CODE`, `ANDROID_VERSION_NAME`) 주입 지원
+- [x] **OCI Caddy 정적 APK 호스팅 구성 (`server/compose.prod.yml`, `server/Caddyfile`, `server/.env.example`)**: `/releases/{$APK_DOWNLOAD_PATH:apk}/*` 경로에서 `fridge-manager-latest.apk`, 버전별 APK, `latest.json`, 모바일 다운로드 페이지(`index.html`) 서빙 (`noindex`, `no-store`)
+- [x] **네이버 MYBOX 업로더 구현 (`scripts/upload_to_mybox.py`)**: 2단계 파일 업로드(`POST /v1/drive/files` → `uploadUrl` `multipart/form-data` `Filedata`), 대상 폴더 조회·자동 생성(`GET /v1/drive/resources`, `POST /v1/drive/folders`) 및 `unittest` 단위 테스트 작성
+- [x] **GitHub Actions 워크플로우 구축 (`.github/workflows/deploy-android-apk.yml`)**: `scripts/tests` + `testDebugUnitTest` → Release 서명 빌드 → `apksigner verify` 서명 검증 → OCI 서버 SCP/SSH 배포(기본) + GitHub Artifact 백업 + 선택적 네이버 MYBOX 미러 업로드
+
 ---
 
 ## 3. 단계 완료 기준 (Definition of Done)
@@ -109,3 +124,6 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 uff 통과). Android APK 하드닝은 미착수.
 - **2026-11-22**: **Phase 5 Android APK 보안 하드닝 구현 완료** — Debug·Release 모두 HTTPS 강제(평문 HTTP 예외 없음), `allowBackup=false`, 로그아웃 일괄 정리, `Authorization` 마스킹, `proguard-rules.pro` 신규 작성. `testDebugUnitTest`·`assembleRelease` 통과.
 - **2026-11-22**: Debug 빌드의 로컬 HTTP 예외 제거(디버깅 중 평문 노출 방지). 개발 시에도 HTTPS `API_BASE_URL` 필요.
+- **2026-11-25**: **Phase 5.1 가족 전용 자체 인증 전환 완료** — Kakao/Google 소셜 로그인 제거, `Stitch` 로그인 시안(`5355023e5b484c05b05ecc476efc7f15`) 개편, FastAPI(`POST /auth/register`, `POST /auth/login`, `scrypt` 해싱, 5회 실패 15분 잠금, `FAMILY_REGISTRATION_CODE` + 최대 2명 자동 잠금, Alembic `0004_add_user_credentials`) 및 Android(`로그인`/`가족 등록` 세그먼트 탭 UI) 구현. `ruff check .`, `pytest`(19 passed), Android `testDebugUnitTest`·`assembleDebug` 통과.
+- **2026-11-25**: **Phase 5.2 Android Release APK 자동 서명 및 네이버 MYBOX 배포 구축 완료** — `android/app/build.gradle.kts` `signingConfigs` 및 CI 버전/URL 주입 지원, `scripts/upload_to_mybox.py`(네이버 MYBOX Open API 2단계 업로드 및 폴더 자동 생성) + `scripts/tests/test_upload_to_mybox.py`(4건 통과), `.github/workflows/deploy-android-apk.yml`(테스트 → Release 서명 빌드 → `apksigner verify` → Artifact/MYBOX 업로드), `.gitignore` 키스토어 차단 및 `02-android-setup.md` 가이드 반영. Android `testDebugUnitTest`·`assembleRelease` 및 YAML 검증 통과.
+- **2026-11-25**: **Phase 5.2 기본 APK 배포 대상을 OCI 서버(`myfridges.duckdns.org`)로 전환** — `NAVER_MY_BOX` PAT 180일 만료 제약을 해소하기 위해 `deploy-android-apk.yml`의 기본 배포를 `OCI_SSH_KEY` 기반 SCP/SSH 배포로 전환하고 네이버 MYBOX 업로드는 선택적 미러(`continue-on-error: true`)로 조정. `server/compose.prod.yml`(`./releases:/srv/releases:ro`), `server/Caddyfile`(`/releases/{$APK_DOWNLOAD_PATH:apk}/*` 정적 호스팅), `server/.env.example`(`APK_DOWNLOAD_PATH`), `.gitignore`(`server/releases/`) 및 가이드 문서 반영.

@@ -1,0 +1,274 @@
+name: Build, Sign & Deploy Android APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - ".github/workflows/deploy-android-apk.yml"
+      - "scripts/upload_to_mybox.py"
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Override Android versionName (e.g. 0.2.0)"
+        required: false
+        type: string
+      upload_latest:
+        description: "Also update fridge-manager-latest.apk"
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  build-and-deploy:
+    name: Test, Sign & Deploy APK to OCI Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run MYBOX uploader unit tests
+        run: python -m unittest discover -s scripts/tests -v
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Set up Gradle 8.12
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.12"
+
+      - name: Run Android unit tests
+        run: gradle -p android testDebugUnitTest
+
+      - name: Resolve release version metadata
+        env:
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          VERSION_CODE="${GITHUB_RUN_NUMBER}"
+          if [ -n "${INPUT_VERSION_NAME}" ]; then
+            VERSION_NAME="${INPUT_VERSION_NAME}"
+          elif [ "${GITHUB_REF_TYPE}" = "tag" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            VERSION_NAME="${GITHUB_REF_NAME#v}"
+          else
+            VERSION_NAME="0.1.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=${VERSION_NAME}" >> "$GITHUB_ENV"
+          echo "Resolved release version: ${VERSION_NAME} (${VERSION_CODE})"
+
+      - name: Decode Android release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for var in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!var:-}" ]; then
+              echo "Missing required GitHub secret: ${var}" >&2
+              exit 1
+            fi
+          done
+          printf '%s' "${ANDROID_KEYSTORE_BASE64}" | tr -d '[:space:]' | base64 -d > "${RUNNER_TEMP}/release-keystore.jks"
+          chmod 600 "${RUNNER_TEMP}/release-keystore.jks"
+
+      - name: Build signed release APK
+        env:
+          API_BASE_URL: ${{ secrets.ANDROID_API_BASE_URL }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          gradle -p android assembleRelease \
+            -PAPI_BASE_URL="${API_BASE_URL:-https://myfridges.duckdns.org/api/v1/}" \
+            -PANDROID_VERSION_CODE="${VERSION_CODE}" \
+            -PANDROID_VERSION_NAME="${VERSION_NAME}" \
+            -PANDROID_KEYSTORE_PATH="${RUNNER_TEMP}/release-keystore.jks" \
+            -PANDROID_KEYSTORE_PASSWORD="${ANDROID_KEYSTORE_PASSWORD}" \
+            -PANDROID_KEY_ALIAS="${ANDROID_KEY_ALIAS}" \
+            -PANDROID_KEY_PASSWORD="${ANDROID_KEY_PASSWORD}"
+
+      - name: Verify APK signature and prepare artifact
+        run: |
+          RAW_APK="android/app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "${RAW_APK}" ]; then
+            echo "Signed release APK not found at ${RAW_APK}" >&2
+            exit 1
+          fi
+          APK_NAME="fridge-manager-v${VERSION_NAME}-b${VERSION_CODE}.apk"
+          APK_PATH="${RUNNER_TEMP}/${APK_NAME}"
+          cp "${RAW_APK}" "${APK_PATH}"
+
+          BUILD_TOOLS_DIR="$(ls -1 "${ANDROID_HOME}/build-tools" | sort -V | tail -n 1)"
+          "${ANDROID_HOME}/build-tools/${BUILD_TOOLS_DIR}/apksigner" verify --print-certs "${APK_PATH}"
+
+          APK_SHA256="$(sha256sum "${APK_PATH}" | awk '{print $1}')"
+          APK_SIZE_BYTES="$(wc -c < "${APK_PATH}" | tr -d '[:space:]')"
+          BUILT_AT_UTC="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+          echo "APK_NAME=${APK_NAME}" >> "$GITHUB_ENV"
+          echo "APK_PATH=${APK_PATH}" >> "$GITHUB_ENV"
+          echo "APK_SHA256=${APK_SHA256}" >> "$GITHUB_ENV"
+          echo "APK_SIZE_BYTES=${APK_SIZE_BYTES}" >> "$GITHUB_ENV"
+          echo "BUILT_AT_UTC=${BUILT_AT_UTC}" >> "$GITHUB_ENV"
+
+      - name: Clean up temporary keystore
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/release-keystore.jks"
+
+      - name: Upload APK workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.APK_PATH }}
+          retention-days: 14
+
+      - name: Deploy signed APK to OCI server
+        env:
+          OCI_HOST: ${{ secrets.OCI_HOST }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+          OCI_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
+          OCI_APP_DIR: ${{ secrets.OCI_APP_DIR }}
+          UPDATE_LATEST: ${{ inputs.upload_latest }}
+        run: |
+          for var in OCI_HOST OCI_USER OCI_SSH_KEY; do
+            if [ -z "${!var:-}" ]; then
+              echo "Missing required GitHub secret: ${var}" >&2
+              exit 1
+            fi
+          done
+
+          mkdir -p ~/.ssh
+          printf '%s\n' "${OCI_SSH_KEY}" > ~/.ssh/oci_key
+          chmod 600 ~/.ssh/oci_key
+
+          REMOTE_BASE_DIR="${OCI_APP_DIR:-}"
+          if [ -z "${REMOTE_BASE_DIR}" ]; then
+            REMOTE_RELEASES_DIR="refrigerator_manger/server/releases"
+          else
+            REMOTE_RELEASES_DIR="${REMOTE_BASE_DIR%/}/server/releases"
+          fi
+
+          ssh -i ~/.ssh/oci_key -o StrictHostKeyChecking=accept-new "${OCI_USER}@${OCI_HOST}" \
+            "mkdir -p \"${REMOTE_RELEASES_DIR}\""
+
+          scp -i ~/.ssh/oci_key -o StrictHostKeyChecking=accept-new \
+            "${APK_PATH}" "${OCI_USER}@${OCI_HOST}:${REMOTE_RELEASES_DIR}/${APK_NAME}"
+
+          ssh -i ~/.ssh/oci_key -o StrictHostKeyChecking=accept-new "${OCI_USER}@${OCI_HOST}" \
+            REMOTE_RELEASES_DIR="${REMOTE_RELEASES_DIR}" \
+            APK_NAME="${APK_NAME}" \
+            VERSION_NAME="${VERSION_NAME}" \
+            VERSION_CODE="${VERSION_CODE}" \
+            APK_SHA256="${APK_SHA256}" \
+            APK_SIZE_BYTES="${APK_SIZE_BYTES}" \
+            BUILT_AT_UTC="${BUILT_AT_UTC}" \
+            UPDATE_LATEST="${UPDATE_LATEST:-true}" \
+            bash -s <<'EOF'
+          set -euo pipefail
+          cd "${REMOTE_RELEASES_DIR}"
+
+          if [ "${UPDATE_LATEST}" = "true" ]; then
+            cp -f "${APK_NAME}" fridge-manager-latest.apk.tmp
+            mv -f fridge-manager-latest.apk.tmp fridge-manager-latest.apk
+            LATEST_FILE="fridge-manager-latest.apk"
+          else
+            LATEST_FILE="${APK_NAME}"
+          fi
+
+          APK_SIZE_MB="$(awk "BEGIN {printf \"%.2f\", ${APK_SIZE_BYTES}/1048576}")"
+
+          cat > latest.json.tmp <<JSON
+          {
+            "versionName": "${VERSION_NAME}",
+            "versionCode": ${VERSION_CODE},
+            "fileName": "${APK_NAME}",
+            "latestFileName": "${LATEST_FILE}",
+            "sha256": "${APK_SHA256}",
+            "sizeBytes": ${APK_SIZE_BYTES},
+            "builtAt": "${BUILT_AT_UTC}"
+          }
+          JSON
+          mv -f latest.json.tmp latest.json
+
+          cat > index.html.tmp <<HTML
+          <!doctype html>
+          <html lang="ko">
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <meta name="robots" content="noindex, nofollow" />
+            <title>우리집 냉장고 매니저 APK 다운로드</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 24px 16px; background: #f4f7f5; color: #1b2420; }
+              .card { max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+              h1 { font-size: 20px; margin: 0 0 8px; }
+              .meta { font-size: 14px; color: #4e5d55; line-height: 1.6; margin-bottom: 20px; }
+              .btn { display: block; text-align: center; background: #1e7f5c; color: #fff; text-decoration: none; font-weight: 700; padding: 14px 18px; border-radius: 12px; margin-bottom: 12px; }
+              .btn-sub { display: block; text-align: center; background: #eef3f0; color: #1b2420; text-decoration: none; font-weight: 600; padding: 12px 16px; border-radius: 12px; font-size: 14px; }
+              code { display: block; word-break: break-all; background: #f6f8f7; padding: 10px; border-radius: 8px; font-size: 12px; margin-top: 14px; color: #36423c; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <h1>우리집 냉장고 매니저 (Android)</h1>
+              <div class="meta">
+                버전: <strong>v${VERSION_NAME}</strong> (Build ${VERSION_CODE})<br />
+                파일 크기: ${APK_SIZE_MB} MB<br />
+                빌드 시각: ${BUILT_AT_UTC}
+              </div>
+              <a class="btn" href="./${LATEST_FILE}">최신 APK 다운로드</a>
+              <a class="btn-sub" href="./${APK_NAME}">버전 파일 다운로드 (${APK_NAME})</a>
+              <code>SHA-256: ${APK_SHA256}</code>
+            </div>
+          </body>
+          </html>
+          HTML
+          mv -f index.html.tmp index.html
+
+          # 최근 5개 버전 APK만 유지하여 VM 디스크 사용량 제한
+          ls -1t fridge-manager-v*.apk 2>/dev/null | tail -n +6 | xargs -r rm -f --
+          echo "Deployed ${APK_NAME} to ${REMOTE_RELEASES_DIR}"
+          EOF
+
+      - name: Clean up temporary SSH key
+        if: always()
+        run: rm -f ~/.ssh/oci_key
+
+      - name: Optional mirror to Naver MYBOX
+        continue-on-error: true
+        env:
+          NAVER_MY_BOX: ${{ secrets.NAVER_MY_BOX }}
+          NAVER_MYBOX_FOLDER_ID: ${{ secrets.NAVER_MYBOX_FOLDER_ID }}
+          NAVER_MYBOX_FOLDER_NAME: ${{ secrets.NAVER_MYBOX_FOLDER_NAME }}
+          UPLOAD_LATEST: ${{ inputs.upload_latest }}
+        run: |
+          if [ -z "${NAVER_MY_BOX:-}" ]; then
+            echo "NAVER_MY_BOX secret is not configured; skipping optional MYBOX mirror."
+            exit 0
+          fi
+
+          ARGS=(
+            --file "${APK_PATH}"
+            --remote-name "${APK_NAME}"
+          )
+          if [ "${UPLOAD_LATEST:-true}" = "true" ]; then
+            ARGS+=(--also-upload-as "fridge-manager-latest.apk")
+          fi
+
+          python scripts/upload_to_mybox.py "${ARGS[@]}"

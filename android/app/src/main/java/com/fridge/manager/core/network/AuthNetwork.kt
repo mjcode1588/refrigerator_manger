@@ -16,7 +16,12 @@ class AuthInterceptor @Inject constructor(
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
         val path = original.url.encodedPath
-        if (path.endsWith("/auth/refresh") || path.contains("/auth/social/") || path.endsWith("/auth/dev-login")) {
+        if (
+            path.endsWith("/auth/refresh") ||
+            path.endsWith("/auth/login") ||
+            path.endsWith("/auth/register") ||
+            path.endsWith("/auth/dev-login")
+        ) {
             return chain.proceed(original)
         }
         val token = runBlocking { tokenStorage.getAccessToken() }

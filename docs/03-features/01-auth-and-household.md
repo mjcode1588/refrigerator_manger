@@ -1,47 +1,29 @@
 # 01. 인증 및 가족/동거인 공동 관리 명세
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-22  
+> **최종 수정일**: 2026-11-25  
 > **관련 문서**: [DB ERD](../02-architecture/03-database-erd.md), [REST API 명세](../02-architecture/04-api-spec.md)
 
 ---
 
-## 1. 소셜 로그인 및 JWT 인증
+## 1. 가족 전용 자체 인증 (아이디·비밀번호 + 등록코드) 및 JWT
 
-### 1.1 지원 제공자 및 검증 흐름
-- **단일 소셜 로그인 정책**: 운영 환경의 로그인은 **Kakao(카카오톡/카카오계정) 단일 제공자**만 지원합니다. (Google 로그인 버튼은 제거하며, 카카오 SDK 연동 전까지 `카카오로 시작하기` 버튼은 동작하지 않는 플레이스홀더로 유지합니다. 체험 로그인 `/auth/dev-login`은 `ALLOW_DEV_LOGIN=true` 설정으로 제어합니다.)
-- **Kakao 로그인 흐름**: Android Kakao SDK로 획득한 `access_token`을 FastAPI(`POST /api/v1/auth/social/kakao`)로 전달 → 백엔드에서 Kakao 사용자 정보 API(`https://kapi.kakao.com/v2/user/me`) 호출하여 `id`, 닉네임, 이메일 확인.
-- 최초 로그인 시 `USERS` 및 `SOCIAL_ACCOUNTS` 레코드를 자동 생성하며, 별도의 회원가입 폼 없이 즉시 진입합니다.
-
-### 1.1.1 카카오톡 로그인 구현 체크리스트
-
-#### 1) Kakao Developers 콘솔 설정
-1. [Kakao Developers](https://developers.kakao.com/)에서 애플리케이션 생성 후 **네이티브 앱 키**(Android용) 확인
-2. **플랫폼 > Android** 등록:
-   - 패키지명: `com.fridge.manager`
-   - **키 해시(Key Hash)**: 로컬 디버그 키스토어 해시 + 배포용 릴리즈 키스토어 해시 등록
-3. **카카오 로그인 > 활성화 설정**: 상태 `ON`
-4. **카카오 로그인 > 동의항목**: `닉네임`(필수 동의), `카카오계정(이메일)`(선택 동의) 설정
-
-#### 2) Android 앱 (`android/`) 구현 사항
-1. **SDK 및 Manifest 설정**:
-   - `com.kakao.sdk:v2-user` 의존성 추가 (`libs.versions.toml` / `app/build.gradle.kts`)
-   - `AndroidManifest.xml`에 `AuthCodeHandlerActivity` 및 `kakao{NATIVE_APP_KEY}://oauth` 스킴 등록
-   - `Application` 클래스에서 `KakaoSdk.init(this, BuildConfig.KAKAO_NATIVE_APP_KEY)` 초기화 (키는 `local.properties`로 주입, Git 커밋 금지)
-2. **로그인 UI 및 토큰 연동**:
-   - 로그인 화면에서 **"카카오로 시작하기"** 단일 버튼만 노출
-   - 카카오톡 설치 시 `UserApiClient.instance.loginWithKakaoTalk()`, 미설치 시 `loginWithKakaoAccount()` 호출
-   - 획득한 Kakao `access_token`을 백엔드 `POST /api/v1/auth/social/kakao`로 전송해 자체 JWT(`access_token`, `refresh_token`) 발급 및 안전 저장
-
-#### 3) FastAPI 백엔드 (`server/`) 확인 및 보완 사항
-1. **구현 완료**: `POST /api/v1/auth/social/kakao` (`verify_kakao` → `https://kapi.kakao.com/v2/user/me`) 구현됨
-2. **후속 작업**:
-   - Google 로그인 엔드포인트(`/auth/social/google`) 비활성화/제거
-   - *(권장 보안 강화)* `https://kapi.kakao.com/v1/user/access_token_info` 호출을 추가해 토큰의 `app_id`가 서비스의 `KAKAO_APP_ID`와 일치하는지 검증 (타 앱 토큰 재사용 방지)
+### 1.1 지원 인증 방식 및 보안 정책
+- **가족 전용 자체 인증**: 외부 소셜 로그인(Kakao/Google)을 사용하지 않고, 부부 2인 전용 백엔드 자체 인증(`POST /api/v1/auth/register`, `POST /api/v1/auth/login`)만 지원합니다. (로컬 개발·테스트용 체험 로그인 `/auth/dev-login`은 `ALLOW_DEV_LOGIN=true`일 때만 동작하며, 운영 환경에서는 기동 시 차단됩니다.)
+- **가족 등록코드 가입 (`POST /api/v1/auth/register`)**:
+  - 입력 필드: `username`(영문·숫자·`_`·`-`, 3~32자, 소문자 정규화 저장), `password`(8~128자, 공백만 입력 불가), `nickname`(1~100자), `registration_code`(서버 `.env`의 `FAMILY_REGISTRATION_CODE`와 상수시간 비교 `hmac.compare_digest`).
+  - `FAMILY_REGISTRATION_CODE`가 비어 있으면 신규 가입을 비활성화(`403 REGISTRATION_DISABLED`)합니다.
+  - 등록된 비밀번호 계정(`users.username IS NOT NULL`) 수가 `MAX_REGISTERED_USERS`(기본 `2`명)에 도달하면 이후 모든 신규 가입 요청을 자동 차단(`403 REGISTRATION_CLOSED`)하여 외부 제3자의 가입을 원천 봉쇄합니다.
+  - 동일 `username` 중복 가입 시 `409 USERNAME_ALREADY_EXISTS`를 반환합니다.
+- **아이디·비밀번호 로그인 (`POST /api/v1/auth/login`)**:
+  - `hashlib.scrypt`(N=16384, r=8, p=1, 16B 솔트, 32B 다이제스트)로 비밀번호를 해싱·검증하며, `hmac.compare_digest`로 상수시간 비교를 수행합니다.
+  - 존재하지 않는 아이디로 로그인 시도 시에도 더미 scrypt 검증을 수행하여 계정 존재 유무를 응답 시간으로 유추하는 타이밍 공격을 방지합니다.
+  - **계정 잠금 (Brute-Force 방어)**: 연속 `AUTH_MAX_FAILED_ATTEMPTS`(기본 `5`회) 로그인 실패 시 해당 계정을 `AUTH_LOCKOUT_MINUTES`(기본 `15`분) 동안 잠그고 `429 ACCOUNT_LOCKED`를 반환합니다. 로그인 성공 시 실패 카운터(`failed_login_attempts`)와 잠금 시각(`locked_until`)을 즉시 초기화합니다.
+- **최초 등록 후 가구 참여**: 첫 번째 가족 구성원이 로그인 후 **새 우리집 만들기**로 가구를 생성하고 초대 코드를 발급하면, 두 번째 구성원이 로그인 후 **초대 코드로 참여하기**로 합류합니다.
 
 ### 1.1.2 로그인 진행 시 백엔드 서버 연결 확인 (`/health`)
 - 로그인 화면에 서버 내부 상태(`db_provider` 등)를 직접 노출하지 않습니다.
-- 사용자가 로그인을 진행(카카오 로그인 완료 후)하면 로딩 스피너(`"서버에 연결 중입니다..."`)를 표시하고 버튼을 비활성화(중복 클릭 방지)한 뒤 `GET /api/v1/health`로 백엔드 연결 가능 여부를 먼저 확인합니다.
+- 사용자가 로그인 또는 가족 등록을 진행하면 로딩 스피너(`"서버에 연결 중입니다..."`)를 표시하고 버튼을 비활성화(중복 클릭 방지)한 뒤 `GET /api/v1/health`로 백엔드 연결 가능 여부를 먼저 확인합니다.
   - **짧은 타임아웃**: `/health` 확인 요청은 **4초 타임아웃**을 적용해 서버 미응답 시 빠르게 안내합니다.
   - **점검 모드 및 최소 앱 버전 확인**: `/health` 응답의 `maintenance`, `maintenance_message`, `min_android_version_code`를 확인하여 서버 점검 중이거나 필수 업데이트가 필요한 경우 로그인 진입을 차단하고 안내 메시지를 표시합니다.
 - 서버가 정상(`healthy`) 응답하면 백엔드 인증 및 가구 목록 조회를 완료한 뒤 홈 화면으로 진입하며, 연결 실패 시 내부 상세 정보 대신 사용자 친화적 안내(`"서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."`)를 표시합니다.
@@ -53,7 +35,7 @@
 | **Access Token** | JWT (HS256 또는 RS256), 유효기간 **30분**, Payload에 `sub`(user_id), `exp`, `iat` 포함 |
 | **Refresh Token** | 암호학적 난수 문자열, 유효기간 **30일**, DB `REFRESH_TOKENS`에 SHA-256 해시 저장 |
 | **Token Rotation & 탈취 감지** | `/auth/refresh` 호출 시 원자적으로 기존 Refresh Token을 폐기(`revoked_at`)한 뒤 새 토큰 쌍 발급. **이미 폐기된 Refresh Token이 재사용될 경우 토큰 탈취로 간주하여 해당 사용자의 모든 활성 Refresh Token을 즉시 일괄 폐기(Reuse Detection)** |
-| **운영 환경 Fail-Fast 검증** | `APP_ENV != "local"`일 때 기본 `JWT_SECRET_KEY`(또는 32바이트 미만 키) 사용 및 `ALLOW_DEV_LOGIN=true` 설정 시 서버 기동을 즉시 차단 |
+| **운영 환경 Fail-Fast 검증** | `APP_ENV != "local"`일 때 기본 `JWT_SECRET_KEY`(또는 32바이트 미만 키) 사용, `ALLOW_DEV_LOGIN=true` 설정, 또는 8자 미만의 `FAMILY_REGISTRATION_CODE` 설정 시 서버 기동을 즉시 차단 |
 | **로그아웃 소유권 검증 및 세션 정리** | 백엔드 `POST /auth/logout`은 요청자의 `user_id`와 일치하는 Refresh Token만 폐기. Android 앱은 로그아웃 시 ① 서버 `/auth/logout` 호출 → ② `TokenStorage.clear()` → ③ 로컬 Room DB(`items`, `storage_locations`) 전체 삭제 → ④ `ExpiryCheckWorker.cancel()`을 일괄 수행하여 계정 전환 시 이전 데이터 잔류 및 알림 오발송을 방지 |
 | **Android 저장소 및 백업 차단** | Android Keystore 기반 암호화 저장소에 보관하며, `allowBackup="false"` 또는 `data_extraction_rules.xml`을 통해 인증 토큰과 로컬 DB가 클라우드/ADB 백업으로 추출되지 않도록 차단 |
 
@@ -109,3 +91,4 @@
 | 2026-11-21 | 보안 하드닝 명세 추가 — 운영 환경 Fail-Fast 검증, Refresh Token 재사용 탈취 감지(Reuse Detection), 로그아웃 소유권 검증 및 로컬 Room 캐시/워커 일괄 정리, 초대 코드 원자적 차감 및 Rate Limiting 정책 반영 | `docs/03-features/01-auth-and-household.md` |
 | 2026-11-22 | 백엔드 보안 하드닝 구현 완료 (Fail-Fast, Reuse Detection, 로그아웃 소유권 403, 초대 코드 원자적 차감, Rate Limiting 429) | server/app/core/config.py, server/app/core/rate_limit.py, server/app/main.py, server/app/api/routers/auth.py, server/app/api/routers/households.py, server/Caddyfile, server/entrypoint.sh, server/tests/test_security_hardening.py |
 | 2026-11-22 | Android 로그아웃 일괄 정리(/auth/logout 호출 + TokenStorage.clear() + Room clearAllTables() + ExpiryCheckWorker.cancel()) 구현 | android/.../FridgeRepository.kt, MainViewModel.kt |
+| 2026-11-25 | Kakao/Google 소셜 로그인 제거 및 부부 2인 전용 백엔드 자체 인증(아이디·비밀번호 + `FAMILY_REGISTRATION_CODE`, 최대 2명 제한, scrypt 해싱, 5회 실패 시 15분 잠금) 명세로 개편 | `docs/03-features/01-auth-and-household.md` |

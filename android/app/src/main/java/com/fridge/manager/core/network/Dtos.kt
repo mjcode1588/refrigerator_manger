@@ -5,13 +5,28 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
 @Serializable
-data class SocialGoogleRequest(
-    @SerialName("id_token") val idToken: String,
+data class LoginRequest(
+    val username: String,
+    val password: String,
 )
 
 @Serializable
-data class SocialKakaoRequest(
-    @SerialName("access_token") val accessToken: String,
+data class RegisterRequest(
+    val username: String,
+    val password: String,
+    val nickname: String,
+    @SerialName("registration_code") val registrationCode: String,
+)
+
+@Serializable
+data class ApiErrorBody(
+    val code: String? = null,
+    val message: String? = null,
+)
+
+@Serializable
+data class ApiErrorEnvelope(
+    val error: ApiErrorBody? = null,
 )
 
 @Serializable

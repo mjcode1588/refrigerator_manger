@@ -49,10 +49,12 @@ class Settings(BaseSettings):
     jwt_access_expire_minutes: int = 30
     jwt_refresh_expire_days: int = 30
 
-    # 소셜 로그인 및 체험 로그인 설정
+    # 가족 전용 자체 인증 및 체험 로그인 설정
     allow_dev_login: bool = True
-    google_client_id: str | None = None
-    kakao_rest_api_key: str | None = None
+    family_registration_code: str = ""
+    max_registered_users: int = 2
+    auth_max_failed_attempts: int = 5
+    auth_lockout_minutes: int = 15
 
     # 점검 모드 및 최소 앱 버전
     maintenance_mode: bool = False
@@ -92,6 +94,11 @@ class Settings(BaseSettings):
             problems.append("JWT_SECRET_KEY가 기본값이거나 너무 짧습니다(32자 이상 필요).")
         if self.allow_dev_login:
             problems.append("운영 환경에서는 ALLOW_DEV_LOGIN=false 여야 합니다.")
+        reg_code = self.family_registration_code.strip()
+        if reg_code and len(reg_code) < 8:
+            problems.append(
+                "FAMILY_REGISTRATION_CODE는 8자 이상이어야 합니다(비워두면 신규 가입 비활성화)."
+            )
         if problems:
             raise RuntimeError("운영 환경 보안 설정 오류: " + " ".join(problems))
 

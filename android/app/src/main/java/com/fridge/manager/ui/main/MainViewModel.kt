@@ -9,6 +9,7 @@ import com.fridge.manager.core.datastore.TokenStorage
 import com.fridge.manager.core.media.CompressedItemPhotos
 import com.fridge.manager.core.network.CreateItemRequest
 import com.fridge.manager.core.notification.ExpiryCheckWorker
+import com.fridge.manager.data.repository.AuthApiException
 import com.fridge.manager.data.repository.FridgeRepository
 import com.fridge.manager.data.repository.ServerUnavailableException
 import com.fridge.manager.domain.model.ActivityLogItem
@@ -83,7 +84,35 @@ class MainViewModel @Inject constructor(
         _message.value = null
     }
 
-    fun devLogin(nickname: String) = viewModelScope.launch {
+    fun login(username: String, password: String) = launchAuthFlow {
+        val list = repository.login(username = username, password = password)
+        _households.value = list
+        refreshAll()
+    }
+
+    fun register(
+        username: String,
+        password: String,
+        nickname: String,
+        registrationCode: String,
+    ) = launchAuthFlow {
+        val list = repository.register(
+            username = username,
+            password = password,
+            nickname = nickname,
+            registrationCode = registrationCode,
+        )
+        _households.value = list
+        refreshAll()
+    }
+
+    fun devLogin(nickname: String) = launchAuthFlow {
+        val list = repository.devLogin(nickname)
+        _households.value = list
+        refreshAll()
+    }
+
+    private fun launchAuthFlow(authBlock: suspend () -> Unit) = viewModelScope.launch {
         if (_isLoginLoading.value) return@launch
         _isLoginLoading.value = true
         try {
@@ -99,10 +128,13 @@ class MainViewModel @Inject constructor(
             }
 
             runCatching {
-                val list = repository.devLogin(nickname)
-                _households.value = list
-                refreshAll()
-            }.onFailure { _message.value = it.message ?: "로그인 실패" }
+                authBlock()
+            }.onFailure { err ->
+                _message.value = when (err) {
+                    is AuthApiException -> err.message
+                    else -> err.message ?: "로그인 실패"
+                }
+            }
         } finally {
             _isLoginLoading.value = false
         }

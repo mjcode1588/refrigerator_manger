@@ -1,7 +1,7 @@
 # 03. 데이터베이스 설계 (DB 벤더 중립 ERD 및 호환성 가이드)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-21  
+> **최종 수정일**: 2026-11-25  
 > **관련 문서**: [전체 시스템 아키텍처](./01-system-architecture.md), [보관 장소 및 재고 명세](../03-features/02-storage-and-inventory.md)
 
 ---
@@ -34,8 +34,12 @@ erDiagram
 
     users {
         BIGINT id PK
+        VARCHAR username UK
+        VARCHAR password_hash
         VARCHAR nickname
         VARCHAR email
+        INTEGER failed_login_attempts
+        TIMESTAMPTZ locked_until
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -149,7 +153,8 @@ erDiagram
 ## 4. 주요 테이블 상세 및 자유 트리 조회 전략
 
 ### 4.1 `users` / `social_accounts` / `refresh_tokens`
-- `social_accounts`: `(provider, provider_user_id)` 복합 유니크 제약(`GOOGLE`, `KAKAO`).
+- `users`: 자체 로그인용 `username`(64자, 유니크, Nullable), `password_hash`(255자, `scrypt` 솔트 해시, Nullable), `failed_login_attempts`(기본 0), `locked_until`(TIMESTAMPTZ, Nullable) 포함.
+- `social_accounts`: `(provider, provider_user_id)` 복합 유니크 제약(로컬 체험 로그인 `DEV` 및 레거시 호환용으로 테이블 유지).
 - `refresh_tokens`: SHA-256 해시(`token_hash`) 저장, 로그아웃/회전 시 `revoked_at` 기록.
 
 ### 4.2 `households` / `household_members` / `invite_codes`
@@ -188,3 +193,4 @@ erDiagram
 | 날짜 | 변경 내용 | 주요 파일 |
 |---|---|---|
 | 2026-11-21 | `items` 테이블에 외부 스토리지 연동용 `detail_image_key`, `thumb_image_key` 컬럼 추가 (이미지 바이너리 DB 미저장 및 TTL 정리 정책 반영) | `docs/02-architecture/03-database-erd.md` |
+| 2026-11-25 | `users` 테이블에 가족 전용 자체 인증 컬럼(`username`, `password_hash`, `failed_login_attempts`, `locked_until`) 추가 | `docs/02-architecture/03-database-erd.md` |

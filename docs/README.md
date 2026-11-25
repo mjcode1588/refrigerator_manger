@@ -1,7 +1,7 @@
 # 📚 우리집 식재료·보관품 관리 시스템 문서 저장소
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-21  
+> **최종 수정일**: 2026-11-25  
 
 이 디렉토리는 **냉장고, 팬트리 등 가정 내 모든 보관 장소의 식재료 및 완제품을 관리하는 시스템**의 기획·아키텍처·기능 명세·개발 가이드를 통합 관리하는 문서 저장소입니다.
 
@@ -26,7 +26,7 @@
 ### 03. 기능 명세 (`03-features/`)
 | 문서 | 설명 | 상태 |
 |---|---|---|
-| [01-auth-and-household.md](./03-features/01-auth-and-household.md) | Google/Kakao 소셜 로그인 + JWT, 가구(가족/동거인) 초대 및 변경 이력 | 초안 |
+| [01-auth-and-household.md](./03-features/01-auth-and-household.md) | 가족 전용 자체 인증(아이디·비밀번호 + 등록코드) + JWT, 가구 초대 및 변경 이력 | 초안 |
 | [02-storage-and-inventory.md](./03-features/02-storage-and-inventory.md) | 자유 트리 보관 장소 관리 및 식재료·완제품 재고 CRUD 명세 | 초안 |
 | [03-expiry-notification.md](./03-features/03-expiry-notification.md) | 유통기한/소비기한 D-Day 정책 및 Android WorkManager 로컬 알림 명세 | 초안 |
 

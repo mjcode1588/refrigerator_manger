@@ -1,13 +1,11 @@
 package com.fridge.manager.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,22 +19,30 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.Login
+import androidx.compose.material.icons.rounded.Badge
 import androidx.compose.material.icons.rounded.Cancel
-import androidx.compose.material.icons.rounded.ChatBubble
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Eco
 import androidx.compose.material.icons.rounded.GroupAdd
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Kitchen
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayCircleOutline
+import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -44,9 +50,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,26 +63,39 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material3.CircularProgressIndicator
+import com.fridge.manager.BuildConfig
 import com.fridge.manager.ui.theme.FreshKitchenColors
 
 @Composable
 fun AuthOnboardingScreen(
     isLoggedIn: Boolean,
     isLoggingIn: Boolean = false,
+    onLogin: (username: String, password: String) -> Unit,
+    onRegister: (username: String, password: String, nickname: String, registrationCode: String) -> Unit,
     onDevLogin: (String) -> Unit,
     onCreateHousehold: (String) -> Unit,
     onJoinHousehold: (String) -> Unit,
 ) {
     val clipboardManager = LocalClipboardManager.current
+    var authTab by remember { mutableIntStateOf(0) } // 0: 로그인, 1: 가족 등록
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var nickname by remember { mutableStateOf("") }
-    var showCustomNickname by remember { mutableStateOf(false) }
+    var registrationCode by remember { mutableStateOf("") }
+    var registrationCodeVisible by remember { mutableStateOf(false) }
+
     var householdName by remember { mutableStateOf("행복한 우리집") }
     var createDefaultLocations by remember { mutableStateOf(true) }
     var inviteCode by remember { mutableStateOf("") }
@@ -177,138 +196,294 @@ fun AuthOnboardingScreen(
             ) {
                 Column(
                     modifier = Modifier.padding(22.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
+                    // 2단 세그먼트 탭: 로그인 / 가족 등록
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        HorizontalDivider(
-                            modifier = Modifier.weight(1f),
-                            color = FreshKitchenColors.BorderSubtle,
-                        )
-                        Text(
-                            text = "간편 로그인으로 시작하기",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = FreshKitchenColors.TextMuted,
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier.weight(1f),
-                            color = FreshKitchenColors.BorderSubtle,
-                        )
-                    }
-
-                    Spacer(Modifier.height(2.dp))
-
-                    // Kakao CTA (카카오 SDK 연동 전까지 클릭 시 무반응)
-                    Button(
-                        onClick = {},
-                        enabled = !isLoggingIn,
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = FreshKitchenColors.KakaoYellow,
-                            contentColor = FreshKitchenColors.KakaoText,
-                        ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp),
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(FreshKitchenColors.SurfaceMuted)
+                            .padding(4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        if (isLoggingIn) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                                color = FreshKitchenColors.KakaoText,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("서버에 연결 중입니다...", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        } else {
-                            Icon(
-                                imageVector = Icons.Rounded.ChatBubble,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("카카오로 시작하기", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        }
+                        AuthSegmentTab(
+                            label = "로그인",
+                            selected = authTab == 0,
+                            onClick = { if (!isLoggingIn) authTab = 0 },
+                            modifier = Modifier.weight(1f),
+                        )
+                        AuthSegmentTab(
+                            label = "가족 등록",
+                            selected = authTab == 1,
+                            onClick = { if (!isLoggingIn) authTab = 1 },
+                            modifier = Modifier.weight(1f),
+                        )
                     }
 
-                    // Optional custom nickname for dev testing
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        TextButton(
-                            onClick = { showCustomNickname = !showCustomNickname },
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                        ) {
+                    if (authTab == 0) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = if (showCustomNickname) "직접 입력 닫기" else "닉네임 직접 입력하기",
+                                text = "아이디",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = FreshKitchenColors.PrimaryTealDeep,
+                                fontWeight = FontWeight.SemiBold,
+                                color = FreshKitchenColors.TextSecondary,
+                            )
+                            SoftInputField(
+                                value = username,
+                                onValueChange = { username = it },
+                                placeholder = "영문·숫자 아이디 입력",
+                                leadingIcon = Icons.Rounded.Person,
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Ascii,
+                                    imeAction = ImeAction.Next,
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
                             )
                         }
-                    }
 
-                    AnimatedVisibility(visible = showCustomNickname) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "비밀번호",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = FreshKitchenColors.TextSecondary,
+                            )
+                            SoftInputField(
+                                value = password,
+                                onValueChange = { password = it },
+                                placeholder = "비밀번호 입력 (8자 이상)",
+                                leadingIcon = Icons.Rounded.Lock,
+                                isPassword = true,
+                                passwordVisible = passwordVisible,
+                                onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Password,
+                                    imeAction = ImeAction.Done,
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+
+                        val canLogin = !isLoggingIn && username.isNotBlank() && password.isNotBlank()
+                        Button(
+                            onClick = { onLogin(username.trim(), password) },
+                            enabled = canLogin,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = FreshKitchenColors.PrimaryTealDeep,
+                                contentColor = Color.White,
+                                disabledContainerColor = FreshKitchenColors.PrimaryTealDeep.copy(alpha = 0.45f),
+                                disabledContentColor = Color.White.copy(alpha = 0.85f),
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
                         ) {
+                            if (isLoggingIn) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White,
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("서버에 연결 중입니다...", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            } else {
+                                Text("로그인", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.Login,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "닉네임",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = FreshKitchenColors.TextSecondary,
+                            )
                             SoftInputField(
                                 value = nickname,
                                 onValueChange = { nickname = it },
-                                placeholder = "닉네임 (예: 민수, 지영)",
-                                modifier = Modifier.weight(1f),
+                                placeholder = "예: 남편, 아내",
+                                leadingIcon = Icons.Rounded.Badge,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                modifier = Modifier.fillMaxWidth(),
                             )
-                            Button(
-                                onClick = { if (nickname.isNotBlank()) onDevLogin(nickname.trim()) },
-                                enabled = nickname.isNotBlank(),
-                                shape = RoundedCornerShape(14.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = FreshKitchenColors.PrimaryTealDeep,
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "아이디",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = FreshKitchenColors.TextSecondary,
+                            )
+                            SoftInputField(
+                                value = username,
+                                onValueChange = { username = it },
+                                placeholder = "영문·숫자·_·- (3~32자)",
+                                leadingIcon = Icons.Rounded.Person,
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Ascii,
+                                    imeAction = ImeAction.Next,
                                 ),
-                                modifier = Modifier.height(50.dp),
-                            ) {
-                                Text("시작", fontWeight = FontWeight.Bold)
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "비밀번호",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = FreshKitchenColors.TextSecondary,
+                            )
+                            SoftInputField(
+                                value = password,
+                                onValueChange = { password = it },
+                                placeholder = "8자 이상 비밀번호",
+                                leadingIcon = Icons.Rounded.Lock,
+                                isPassword = true,
+                                passwordVisible = passwordVisible,
+                                onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Password,
+                                    imeAction = ImeAction.Next,
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "가족 등록코드",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = FreshKitchenColors.TextSecondary,
+                            )
+                            SoftInputField(
+                                value = registrationCode,
+                                onValueChange = { registrationCode = it },
+                                placeholder = "서버에 설정된 가족 등록코드",
+                                leadingIcon = Icons.Rounded.Key,
+                                isPassword = true,
+                                passwordVisible = registrationCodeVisible,
+                                onTogglePasswordVisibility = {
+                                    registrationCodeVisible = !registrationCodeVisible
+                                },
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Password,
+                                    imeAction = ImeAction.Done,
+                                ),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+
+                        val canRegister = !isLoggingIn &&
+                            nickname.isNotBlank() &&
+                            username.trim().length >= 3 &&
+                            password.length >= 8 &&
+                            registrationCode.isNotBlank()
+                        Button(
+                            onClick = {
+                                onRegister(
+                                    username.trim(),
+                                    password,
+                                    nickname.trim(),
+                                    registrationCode.trim(),
+                                )
+                            },
+                            enabled = canRegister,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = FreshKitchenColors.PrimaryTealDeep,
+                                contentColor = Color.White,
+                                disabledContainerColor = FreshKitchenColors.PrimaryTealDeep.copy(alpha = 0.45f),
+                                disabledContentColor = Color.White.copy(alpha = 0.85f),
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                        ) {
+                            if (isLoggingIn) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White,
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("서버에 연결 중입니다...", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            } else {
+                                Text("우리집 계정 등록하기", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             }
                         }
+                    }
+
+                    // 가족 전용 보안 배지
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(FreshKitchenColors.MintGlow)
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.VerifiedUser,
+                            contentDescription = null,
+                            tint = FreshKitchenColors.PrimaryTealDeep,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Text(
+                            text = "우리집 가족 전용 · 2인 등록 완료 시 외부 가입 자동 차단",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = FreshKitchenColors.PrimaryDark,
+                        )
                     }
                 }
             }
 
-            Spacer(Modifier.height(22.dp))
+            if (BuildConfig.DEBUG) {
+                Spacer(Modifier.height(18.dp))
 
-            // Preview demo account pill
-            Surface(
-                onClick = { onDevLogin("민수") },
-                shape = RoundedCornerShape(999.dp),
-                color = FreshKitchenColors.PrimarySoft,
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                // Preview demo account pill (Debug 빌드 전용)
+                Surface(
+                    onClick = { onDevLogin("민수") },
+                    enabled = !isLoggingIn,
+                    shape = RoundedCornerShape(999.dp),
+                    color = FreshKitchenColors.PrimarySoft,
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayCircleOutline,
-                        contentDescription = null,
-                        tint = FreshKitchenColors.PrimaryDark,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Text(
-                        text = "체험 계정으로 먼저 둘러보기",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = FreshKitchenColors.PrimaryDark,
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.PlayCircleOutline,
+                            contentDescription = null,
+                            tint = FreshKitchenColors.PrimaryDark,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            text = "체험 계정으로 먼저 둘러보기 (Debug)",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = FreshKitchenColors.PrimaryDark,
+                        )
+                    }
                 }
             }
 
             Spacer(Modifier.height(14.dp))
             Text(
-                text = "시작 시 이용약관 및 개인정보처리방침에 동의하게 됩니다.",
+                text = "로그인 세션은 30일간 안전하게 암호화되어 유지됩니다.",
                 style = MaterialTheme.typography.bodySmall,
                 color = FreshKitchenColors.TextMuted,
                 textAlign = TextAlign.Center,
@@ -628,11 +803,40 @@ fun AuthOnboardingScreen(
 }
 
 @Composable
+private fun AuthSegmentTab(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) FreshKitchenColors.PrimaryTealDeep else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = if (selected) Color.White else FreshKitchenColors.TextMuted,
+        )
+    }
+}
+
+@Composable
 private fun SoftInputField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
     modifier: Modifier = Modifier,
+    leadingIcon: ImageVector? = null,
+    isPassword: Boolean = false,
+    passwordVisible: Boolean = false,
+    onTogglePasswordVisibility: (() -> Unit)? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
 ) {
     Row(
         modifier = modifier
@@ -641,19 +845,34 @@ private fun SoftInputField(
             .background(FreshKitchenColors.SurfaceMuted)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        if (leadingIcon != null) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = FreshKitchenColors.TextMuted,
+                modifier = Modifier.size(18.dp),
+            )
+        }
         Box(modifier = Modifier.weight(1f)) {
             if (value.isEmpty()) {
                 Text(
                     text = placeholder,
                     color = FreshKitchenColors.TextMuted,
-                    fontSize = 15.sp,
+                    fontSize = 14.sp,
                 )
             }
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
                 singleLine = true,
+                keyboardOptions = keyboardOptions,
+                visualTransformation = if (isPassword && !passwordVisible) {
+                    PasswordVisualTransformation()
+                } else {
+                    VisualTransformation.None
+                },
                 textStyle = TextStyle(
                     color = FreshKitchenColors.TextPrimary,
                     fontSize = 15.sp,
@@ -663,7 +882,23 @@ private fun SoftInputField(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        if (value.isNotEmpty()) {
+        if (isPassword && onTogglePasswordVisibility != null) {
+            IconButton(
+                onClick = onTogglePasswordVisibility,
+                modifier = Modifier.size(28.dp),
+            ) {
+                Icon(
+                    imageVector = if (passwordVisible) {
+                        Icons.Rounded.VisibilityOff
+                    } else {
+                        Icons.Rounded.Visibility
+                    },
+                    contentDescription = if (passwordVisible) "숨기기" else "표시",
+                    tint = FreshKitchenColors.TextMuted,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+        } else if (value.isNotEmpty()) {
             IconButton(
                 onClick = { onValueChange("") },
                 modifier = Modifier.size(28.dp),

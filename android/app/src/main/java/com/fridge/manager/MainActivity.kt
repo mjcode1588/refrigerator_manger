@@ -99,6 +99,8 @@ class MainActivity : ComponentActivity() {
                             AuthOnboardingScreen(
                                 isLoggedIn = !token.isNullOrBlank(),
                                 isLoggingIn = isLoginLoading,
+                                onLogin = vm::login,
+                                onRegister = vm::register,
                                 onDevLogin = vm::devLogin,
                                 onCreateHousehold = vm::createHousehold,
                                 onJoinHousehold = vm::joinHousehold,

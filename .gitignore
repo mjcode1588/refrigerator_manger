@@ -101,3 +101,7 @@ local.properties
 .kotlin/
 **/build/
 android/local.properties
+*.jks
+*.keystore
+*.p12
+server/releases/

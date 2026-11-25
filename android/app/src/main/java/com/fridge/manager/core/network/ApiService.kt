@@ -17,11 +17,11 @@ interface ApiService {
     @GET("health")
     suspend fun getHealth(): HealthResponseDto
 
-    @POST("auth/social/google")
-    suspend fun loginWithGoogle(@Body body: SocialGoogleRequest): TokenResponseDto
+    @POST("auth/login")
+    suspend fun login(@Body body: LoginRequest): TokenResponseDto
 
-    @POST("auth/social/kakao")
-    suspend fun loginWithKakao(@Body body: SocialKakaoRequest): TokenResponseDto
+    @POST("auth/register")
+    suspend fun register(@Body body: RegisterRequest): TokenResponseDto
 
     @POST("auth/dev-login")
     suspend fun devLogin(@Body body: DevLoginRequest): TokenResponseDto

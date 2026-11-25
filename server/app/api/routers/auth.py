@@ -1,32 +1,48 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.errors import AppError
 from app.core.rate_limit import limit_auth
-from app.core.security import create_access_token, generate_refresh_token, hash_token
+from app.core.security import (
+    DUMMY_PASSWORD_HASH,
+    constant_time_equals,
+    create_access_token,
+    generate_refresh_token,
+    hash_password,
+    hash_token,
+    verify_password,
+)
 from app.db.models import Household, HouseholdMember, RefreshToken, SocialAccount, User
 from app.db.session import get_db
 from app.schemas.auth import (
     DevLoginRequest,
+    LoginRequest,
     LogoutRequest,
     RefreshTokenRequest,
-    SocialLoginGoogleRequest,
-    SocialLoginKakaoRequest,
+    RegisterRequest,
     TokenResponse,
     UpdateUserMeRequest,
     UserHouseholdBrief,
     UserMeResponse,
     UserSummary,
 )
-from app.services.oauth import OAuthVerifier, SocialUserInfo, get_oauth_verifier
 
 router = APIRouter(tags=["auth"])
 auth_limit = [Depends(limit_auth)]
+
+
+@dataclass(frozen=True)
+class _DevUserInfo:
+    provider: str
+    provider_user_id: str
+    nickname: str
+    email: str | None = None
 
 
 def _as_utc(dt: datetime) -> datetime:
@@ -53,7 +69,7 @@ def _issue_tokens(db: Session, user: User) -> TokenResponse:
     )
 
 
-def _upsert_social_user(db: Session, info: SocialUserInfo) -> User:
+def _upsert_dev_user(db: Session, info: _DevUserInfo) -> User:
     stmt = select(SocialAccount).where(
         SocialAccount.provider == info.provider,
         SocialAccount.provider_user_id == info.provider_user_id,
@@ -79,25 +95,90 @@ def _upsert_social_user(db: Session, info: SocialUserInfo) -> User:
     return user
 
 
-@router.post("/auth/social/google", response_model=TokenResponse, dependencies=auth_limit)
-async def login_with_google(
-    body: SocialLoginGoogleRequest,
+@router.post(
+    "/auth/register",
+    status_code=201,
+    response_model=TokenResponse,
+    dependencies=auth_limit,
+)
+def register(
+    body: RegisterRequest,
     db: Session = Depends(get_db),
-    verifier: OAuthVerifier = Depends(get_oauth_verifier),
 ) -> TokenResponse:
-    info = await verifier.verify_google(body.id_token)
-    user = _upsert_social_user(db, info)
+    expected_code = settings.family_registration_code.strip()
+    if not expected_code:
+        raise AppError(
+            "REGISTRATION_DISABLED",
+            "현재 신규 가족 등록이 비활성화되어 있습니다.",
+            403,
+        )
+    if not constant_time_equals(body.registration_code.strip(), expected_code):
+        raise AppError(
+            "INVALID_REGISTRATION_CODE",
+            "가족 등록코드가 올바르지 않습니다.",
+            403,
+        )
+
+    registered_count = db.execute(
+        select(func.count(User.id)).where(User.username.is_not(None))
+    ).scalar_one()
+    if registered_count >= settings.max_registered_users:
+        raise AppError(
+            "REGISTRATION_CLOSED",
+            "가족 구성원 등록이 마감되었습니다.",
+            403,
+        )
+
+    username = body.username.strip().lower()
+    nickname = body.nickname.strip()
+    if not nickname:
+        raise AppError("INVALID_NICKNAME", "닉네임을 입력해 주세요.", 400)
+    if not body.password.strip():
+        raise AppError("INVALID_PASSWORD", "공백만 포함된 비밀번호는 사용할 수 없습니다.", 400)
+
+    existing = db.execute(select(User).where(User.username == username)).scalar_one_or_none()
+    if existing is not None:
+        raise AppError("USERNAME_ALREADY_EXISTS", "이미 사용 중인 아이디입니다.", 409)
+
+    user = User(
+        username=username,
+        password_hash=hash_password(body.password),
+        nickname=nickname,
+    )
+    db.add(user)
+    db.flush()
     return _issue_tokens(db, user)
 
 
-@router.post("/auth/social/kakao", response_model=TokenResponse, dependencies=auth_limit)
-async def login_with_kakao(
-    body: SocialLoginKakaoRequest,
+@router.post("/auth/login", response_model=TokenResponse, dependencies=auth_limit)
+def login(
+    body: LoginRequest,
     db: Session = Depends(get_db),
-    verifier: OAuthVerifier = Depends(get_oauth_verifier),
 ) -> TokenResponse:
-    info = await verifier.verify_kakao(body.access_token)
-    user = _upsert_social_user(db, info)
+    username = body.username.strip().lower()
+    user = db.execute(select(User).where(User.username == username)).scalar_one_or_none()
+    if user is None or user.password_hash is None:
+        verify_password(body.password, DUMMY_PASSWORD_HASH)
+        raise AppError("INVALID_CREDENTIALS", "아이디 또는 비밀번호가 올바르지 않습니다.", 401)
+
+    now = datetime.now(UTC)
+    if user.locked_until is not None and _as_utc(user.locked_until) > now:
+        raise AppError(
+            "ACCOUNT_LOCKED",
+            "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+            429,
+        )
+
+    if not verify_password(body.password, user.password_hash):
+        user.failed_login_attempts += 1
+        if user.failed_login_attempts >= settings.auth_max_failed_attempts:
+            user.locked_until = now + timedelta(minutes=settings.auth_lockout_minutes)
+        db.commit()
+        raise AppError("INVALID_CREDENTIALS", "아이디 또는 비밀번호가 올바르지 않습니다.", 401)
+
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    db.flush()
     return _issue_tokens(db, user)
 
 
@@ -108,13 +189,13 @@ def dev_login(
 ) -> TokenResponse:
     if not settings.allow_dev_login:
         raise AppError("NOT_FOUND", "체험 로그인이 비활성화되어 있습니다.", 404)
-    info = SocialUserInfo(
+    info = _DevUserInfo(
         provider="DEV",
         provider_user_id=body.nickname.strip().lower(),
         nickname=body.nickname.strip(),
         email=body.email,
     )
-    user = _upsert_social_user(db, info)
+    user = _upsert_dev_user(db, info)
     return _issue_tokens(db, user)
 
 

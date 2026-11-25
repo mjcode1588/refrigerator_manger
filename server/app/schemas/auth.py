@@ -1,12 +1,16 @@
 from pydantic import BaseModel, Field
 
 
-class SocialLoginGoogleRequest(BaseModel):
-    id_token: str = Field(min_length=1)
+class RegisterRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=32, pattern=r"^[a-zA-Z0-9_-]+$")
+    password: str = Field(min_length=8, max_length=128)
+    nickname: str = Field(min_length=1, max_length=100)
+    registration_code: str = Field(min_length=1, max_length=128)
 
 
-class SocialLoginKakaoRequest(BaseModel):
-    access_token: str = Field(min_length=1)
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class DevLoginRequest(BaseModel):
