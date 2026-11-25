@@ -161,17 +161,17 @@ jobs:
           scp -i ~/.ssh/oci_key -o StrictHostKeyChecking=accept-new \
             "${APK_PATH}" "${OCI_USER}@${OCI_HOST}:${REMOTE_TMP_APK}"
 
-          ssh -i ~/.ssh/oci_key -o StrictHostKeyChecking=accept-new "${OCI_USER}@${OCI_HOST}" \
-            OCI_APP_DIR="${OCI_APP_DIR:-}" \
-            REMOTE_TMP_APK="${REMOTE_TMP_APK}" \
-            APK_NAME="${APK_NAME}" \
-            VERSION_NAME="${VERSION_NAME}" \
-            VERSION_CODE="${VERSION_CODE}" \
-            APK_SHA256="${APK_SHA256}" \
-            APK_SIZE_BYTES="${APK_SIZE_BYTES}" \
-            BUILT_AT_UTC="${BUILT_AT_UTC}" \
-            UPDATE_LATEST="${UPDATE_LATEST:-true}" \
-            bash -s <<'EOF'
+          {
+            printf 'export OCI_APP_DIR=%q\n' "${OCI_APP_DIR:-}"
+            printf 'export REMOTE_TMP_APK=%q\n' "${REMOTE_TMP_APK}"
+            printf 'export APK_NAME=%q\n' "${APK_NAME}"
+            printf 'export VERSION_NAME=%q\n' "${VERSION_NAME}"
+            printf 'export VERSION_CODE=%q\n' "${VERSION_CODE}"
+            printf 'export APK_SHA256=%q\n' "${APK_SHA256}"
+            printf 'export APK_SIZE_BYTES=%q\n' "${APK_SIZE_BYTES}"
+            printf 'export BUILT_AT_UTC=%q\n' "${BUILT_AT_UTC}"
+            printf 'export UPDATE_LATEST=%q\n' "${UPDATE_LATEST:-true}"
+            cat <<'EOF'
           set -euo pipefail
           APP_DIR="${OCI_APP_DIR:-$HOME/refrigerator_manger}"
           APP_DIR="${APP_DIR/#\~/$HOME}"
@@ -243,6 +243,7 @@ jobs:
           ls -1t fridge-manager-v*.apk 2>/dev/null | tail -n +6 | xargs -r rm -f --
           echo "Deployed ${APK_NAME} to ${REMOTE_RELEASES_DIR}"
           EOF
+          } | ssh -i ~/.ssh/oci_key -o StrictHostKeyChecking=accept-new "${OCI_USER}@${OCI_HOST}" bash -s
 
       - name: Clean up temporary SSH key
         if: always()
