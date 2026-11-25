@@ -157,21 +157,13 @@ jobs:
           printf '%s\n' "${OCI_SSH_KEY}" > ~/.ssh/oci_key
           chmod 600 ~/.ssh/oci_key
 
-          REMOTE_BASE_DIR="${OCI_APP_DIR:-}"
-          if [ -z "${REMOTE_BASE_DIR}" ]; then
-            REMOTE_RELEASES_DIR="refrigerator_manger/server/releases"
-          else
-            REMOTE_RELEASES_DIR="${REMOTE_BASE_DIR%/}/server/releases"
-          fi
-
-          ssh -i ~/.ssh/oci_key -o StrictHostKeyChecking=accept-new "${OCI_USER}@${OCI_HOST}" \
-            "mkdir -p \"${REMOTE_RELEASES_DIR}\""
-
+          REMOTE_TMP_APK="/tmp/${APK_NAME}"
           scp -i ~/.ssh/oci_key -o StrictHostKeyChecking=accept-new \
-            "${APK_PATH}" "${OCI_USER}@${OCI_HOST}:${REMOTE_RELEASES_DIR}/${APK_NAME}"
+            "${APK_PATH}" "${OCI_USER}@${OCI_HOST}:${REMOTE_TMP_APK}"
 
           ssh -i ~/.ssh/oci_key -o StrictHostKeyChecking=accept-new "${OCI_USER}@${OCI_HOST}" \
-            REMOTE_RELEASES_DIR="${REMOTE_RELEASES_DIR}" \
+            OCI_APP_DIR="${OCI_APP_DIR:-}" \
+            REMOTE_TMP_APK="${REMOTE_TMP_APK}" \
             APK_NAME="${APK_NAME}" \
             VERSION_NAME="${VERSION_NAME}" \
             VERSION_CODE="${VERSION_CODE}" \
@@ -181,6 +173,12 @@ jobs:
             UPDATE_LATEST="${UPDATE_LATEST:-true}" \
             bash -s <<'EOF'
           set -euo pipefail
+          APP_DIR="${OCI_APP_DIR:-$HOME/refrigerator_manger}"
+          APP_DIR="${APP_DIR/#\~/$HOME}"
+          REMOTE_RELEASES_DIR="${APP_DIR%/}/server/releases"
+          mkdir -p "${REMOTE_RELEASES_DIR}"
+          mv -f "${REMOTE_TMP_APK}" "${REMOTE_RELEASES_DIR}/${APK_NAME}"
+          chmod 644 "${REMOTE_RELEASES_DIR}/${APK_NAME}"
           cd "${REMOTE_RELEASES_DIR}"
 
           if [ "${UPDATE_LATEST}" = "true" ]; then
