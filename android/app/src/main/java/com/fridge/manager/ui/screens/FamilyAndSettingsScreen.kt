@@ -1,6 +1,12 @@
 package com.fridge.manager.ui.screens
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,19 +30,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Kitchen
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Group
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.Key
-import androidx.compose.material.icons.rounded.Kitchen
-import androidx.compose.material.icons.rounded.PersonAddAlt1
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material.icons.outlined.PersonAddAlt1
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -56,7 +65,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -68,6 +76,8 @@ import androidx.compose.ui.unit.sp
 import com.fridge.manager.core.datastore.NotificationSettings
 import com.fridge.manager.domain.model.ActivityLogItem
 import com.fridge.manager.ui.theme.FreshKitchenColors
+import com.fridge.manager.ui.theme.FreshKitchenMotion
+import com.fridge.manager.ui.theme.FreshKitchenShapes
 
 @Composable
 fun FamilyAndSettingsScreen(
@@ -84,6 +94,7 @@ fun FamilyAndSettingsScreen(
     val context = LocalContext.current
     val displayName = nickname?.takeIf { it.isNotBlank() } ?: "민수"
     var showTimeMenu by remember { mutableStateOf(false) }
+    var showLogoutConfirm by remember { mutableStateOf(false) }
 
     val otherMembers = remember(activities, displayName) {
         activities.map { it.actorNickname }
@@ -98,9 +109,9 @@ fun FamilyAndSettingsScreen(
             .fillMaxSize()
             .background(FreshKitchenColors.CanvasBackground),
         contentPadding = PaddingValues(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Stitch Top App Bar
+        // Clean Top App Bar
         item {
             Column(modifier = Modifier.background(FreshKitchenColors.SurfaceWhite)) {
                 Row(
@@ -115,101 +126,85 @@ fun FamilyAndSettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Kitchen,
+                            imageVector = Icons.Outlined.Kitchen,
                             contentDescription = null,
                             tint = FreshKitchenColors.PrimaryTealDeep,
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(22.dp),
                         )
                         Text(
-                            text = "우리집 냉장고",
-                            fontSize = 19.sp,
-                            fontWeight = FontWeight.Bold,
+                            text = "가족·알림 설정",
+                            style = MaterialTheme.typography.titleLarge,
                             color = FreshKitchenColors.TextPrimary,
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(FreshKitchenColors.PrimaryTealDeep),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Person,
-                            contentDescription = "프로필",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp),
+                    TextButton(onClick = { showLogoutConfirm = true }) {
+                        Text(
+                            text = "로그아웃",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = FreshKitchenColors.TextMuted,
                         )
                     }
                 }
-                HorizontalDivider(color = FreshKitchenColors.BorderSubtle.copy(alpha = 0.7f))
+                HorizontalDivider(color = FreshKitchenColors.BorderSubtle)
             }
         }
 
         // Top Profile Header
         item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            StitchCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(FreshKitchenColors.PrimaryMint),
-                        contentAlignment = Alignment.Center,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text(
-                            text = displayName.take(1),
-                            fontWeight = FontWeight.Bold,
-                            color = FreshKitchenColors.PrimaryDark,
-                            fontSize = 18.sp,
-                        )
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(FreshKitchenColors.PrimarySoft),
+                            contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = displayName,
+                                text = displayName.take(1),
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = FreshKitchenColors.TextPrimary,
+                                color = FreshKitchenColors.PrimaryDark,
                             )
-                            Surface(
-                                shape = RoundedCornerShape(999.dp),
-                                color = FreshKitchenColors.PrimaryTealDeep,
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 Text(
-                                    text = "방장",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    text = displayName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = FreshKitchenColors.TextPrimary,
                                 )
+                                Surface(
+                                    shape = FreshKitchenShapes.Pill,
+                                    color = FreshKitchenColors.PrimaryTealDeep,
+                                ) {
+                                    Text(
+                                        text = "방장",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    )
+                                }
                             }
+                            Text(
+                                text = householdName,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = FreshKitchenColors.TextMuted,
+                            )
                         }
-                        Text(
-                            text = householdName,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = FreshKitchenColors.TextMuted,
-                        )
                     }
-                }
-                TextButton(onClick = onLogout) {
-                    Text(
-                        text = "로그아웃",
-                        color = FreshKitchenColors.TextMuted,
-                        fontWeight = FontWeight.Medium,
-                    )
                 }
             }
         }
@@ -218,7 +213,7 @@ fun FamilyAndSettingsScreen(
         item {
             StitchCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Column(
-                    modifier = Modifier.padding(18.dp),
+                    modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     Row(
@@ -231,7 +226,7 @@ fun FamilyAndSettingsScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Group,
+                                imageVector = Icons.Outlined.Group,
                                 contentDescription = null,
                                 tint = FreshKitchenColors.PrimaryTealDeep,
                                 modifier = Modifier.size(20.dp),
@@ -239,18 +234,16 @@ fun FamilyAndSettingsScreen(
                             Text(
                                 text = "우리집 구성원",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold,
                                 color = FreshKitchenColors.TextPrimary,
                             )
                             Surface(
-                                shape = RoundedCornerShape(999.dp),
+                                shape = FreshKitchenShapes.Pill,
                                 color = FreshKitchenColors.PrimarySoft,
                             ) {
                                 Text(
                                     text = "${memberCount}명",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = FreshKitchenColors.PrimaryDark,
-                                    fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 )
                             }
@@ -264,7 +257,7 @@ fun FamilyAndSettingsScreen(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.PersonAddAlt1,
+                                imageVector = Icons.Outlined.PersonAddAlt1,
                                 contentDescription = null,
                                 tint = FreshKitchenColors.PrimaryTealDeep,
                                 modifier = Modifier.size(16.dp),
@@ -272,7 +265,6 @@ fun FamilyAndSettingsScreen(
                             Text(
                                 text = "초대",
                                 style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
                                 color = FreshKitchenColors.PrimaryTealDeep,
                             )
                         }
@@ -305,7 +297,7 @@ fun FamilyAndSettingsScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(FreshKitchenShapes.Control)
                             .background(FreshKitchenColors.SurfaceMuted)
                             .padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -320,7 +312,7 @@ fun FamilyAndSettingsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Key,
+                                    imageVector = Icons.Outlined.Key,
                                     contentDescription = null,
                                     tint = FreshKitchenColors.PrimaryTealDeep,
                                     modifier = Modifier.size(16.dp),
@@ -328,14 +320,12 @@ fun FamilyAndSettingsScreen(
                                 Text(
                                     text = "우리집 초대 코드",
                                     style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
                                     color = FreshKitchenColors.TextPrimary,
                                 )
                             }
                             Text(
                                 text = "24시간 유효",
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
                                 color = FreshKitchenColors.ExpiringText,
                             )
                         }
@@ -344,7 +334,7 @@ fun FamilyAndSettingsScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(FreshKitchenShapes.Control)
                                     .background(FreshKitchenColors.SurfaceWhite)
                                     .padding(horizontal = 14.dp, vertical = 10.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -353,7 +343,7 @@ fun FamilyAndSettingsScreen(
                                 Text(
                                     text = inviteCode,
                                     fontSize = 18.sp,
-                                    fontWeight = FontWeight.ExtraBold,
+                                    fontWeight = FontWeight.Bold,
                                     color = FreshKitchenColors.PrimaryTealDeep,
                                     letterSpacing = 2.sp,
                                 )
@@ -364,7 +354,7 @@ fun FamilyAndSettingsScreen(
                                     Surface(
                                         onClick = { clipboardManager.setText(AnnotatedString(inviteCode)) },
                                         shape = RoundedCornerShape(10.dp),
-                                        color = FreshKitchenColors.PrimaryMint,
+                                        color = FreshKitchenColors.PrimarySoft,
                                     ) {
                                         Row(
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -372,7 +362,7 @@ fun FamilyAndSettingsScreen(
                                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Rounded.ContentCopy,
+                                                imageVector = Icons.Outlined.ContentCopy,
                                                 contentDescription = null,
                                                 tint = FreshKitchenColors.PrimaryDark,
                                                 modifier = Modifier.size(14.dp),
@@ -380,7 +370,6 @@ fun FamilyAndSettingsScreen(
                                             Text(
                                                 text = "복사",
                                                 style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Bold,
                                                 color = FreshKitchenColors.PrimaryDark,
                                             )
                                         }
@@ -400,7 +389,7 @@ fun FamilyAndSettingsScreen(
                                         modifier = Modifier.size(32.dp),
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.Share,
+                                            imageVector = Icons.Outlined.Share,
                                             contentDescription = "공유",
                                             tint = FreshKitchenColors.TextMuted,
                                             modifier = Modifier.size(18.dp),
@@ -423,7 +412,7 @@ fun FamilyAndSettingsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Refresh,
+                                    imageVector = Icons.Outlined.Refresh,
                                     contentDescription = null,
                                     tint = FreshKitchenColors.TextMuted,
                                     modifier = Modifier.size(15.dp),
@@ -431,7 +420,6 @@ fun FamilyAndSettingsScreen(
                                 Text(
                                     text = if (inviteCode.isNullOrBlank()) "초대 코드 발급받기" else "새 코드 발급받기",
                                     style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Medium,
                                     color = FreshKitchenColors.TextMuted,
                                 )
                             }
@@ -445,7 +433,7 @@ fun FamilyAndSettingsScreen(
         item {
             StitchCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Column(
-                    modifier = Modifier.padding(18.dp),
+                    modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     Row(
@@ -460,13 +448,12 @@ fun FamilyAndSettingsScreen(
                             Icon(
                                 imageVector = Icons.Outlined.Alarm,
                                 contentDescription = null,
-                                tint = FreshKitchenColors.ExpiredText,
-                                modifier = Modifier.size(22.dp),
+                                tint = FreshKitchenColors.PrimaryTealDeep,
+                                modifier = Modifier.size(20.dp),
                             )
                             Text(
                                 text = "유통기한 로컬 알림",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold,
                                 color = FreshKitchenColors.TextPrimary,
                             )
                         }
@@ -482,209 +469,224 @@ fun FamilyAndSettingsScreen(
                         )
                     }
 
-                    if (notificationSettings.enabled) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AnimatedVisibility(
+                        visible = notificationSettings.enabled,
+                        enter = fadeIn(
+                            animationSpec = tween(
+                                durationMillis = FreshKitchenMotion.StandardMs,
+                                easing = FreshKitchenMotion.EnterEasing,
+                            ),
+                        ) + expandVertically(
+                            animationSpec = tween(
+                                durationMillis = FreshKitchenMotion.StandardMs,
+                                easing = FreshKitchenMotion.EnterEasing,
+                            ),
+                        ),
+                        exit = fadeOut(
+                            animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+                        ) + shrinkVertically(
+                            animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+                        ),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = "알림 기준일",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = FreshKitchenColors.TextPrimary,
+                                    )
+                                    Text(
+                                        text = "기준일 선택",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = FreshKitchenColors.TextMuted,
+                                    )
+                                }
+                                Text(
+                                    text = "만료 전 지정한 날짜에 기기 알림을 미리 전송합니다.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = FreshKitchenColors.TextMuted,
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    listOf(1, 3, 5, 7).forEach { days ->
+                                        val selected = notificationSettings.alertDays == days
+                                        Surface(
+                                            onClick = {
+                                                onUpdateNotificationSettings(
+                                                    notificationSettings.copy(alertDays = days),
+                                                )
+                                            },
+                                            shape = FreshKitchenShapes.Pill,
+                                            color = if (selected) {
+                                                FreshKitchenColors.PrimaryTealDeep
+                                            } else {
+                                                FreshKitchenColors.SurfaceMuted
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(vertical = 9.dp),
+                                                horizontalArrangement = Arrangement.Center,
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                if (selected) {
+                                                    Icon(
+                                                        imageVector = Icons.Outlined.Check,
+                                                        contentDescription = null,
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(14.dp),
+                                                    )
+                                                    Spacer(Modifier.width(3.dp))
+                                                }
+                                                Text(
+                                                    text = "D-$days",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = if (selected) Color.White else FreshKitchenColors.TextPrimary,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Notification Time Row with Dropdown Pill
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Text(
-                                    text = "알림 기준일",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = FreshKitchenColors.TextPrimary,
-                                )
-                                Text(
-                                    text = "기준일 선택",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = FreshKitchenColors.TextMuted,
-                                )
-                            }
-                            Text(
-                                text = "만료 전 지정한 날짜에 기기 알림을 미리 전송합니다.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = FreshKitchenColors.TextMuted,
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                listOf(1, 3, 5, 7).forEach { days ->
-                                    val selected = notificationSettings.alertDays == days
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "알림 시간",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = FreshKitchenColors.TextPrimary,
+                                    )
+                                    Text(
+                                        text = "식재료 확인에 가장 편한 시간",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = FreshKitchenColors.TextMuted,
+                                    )
+                                }
+                                Box {
+                                    val timeLabel = when (notificationSettings.hour) {
+                                        in 0..11 -> "오전 ${String.format("%02d:00", notificationSettings.hour)}"
+                                        12 -> "오후 12:00"
+                                        else -> "오후 ${String.format("%02d:00", notificationSettings.hour - 12)}"
+                                    }
                                     Surface(
-                                        onClick = {
-                                            onUpdateNotificationSettings(
-                                                notificationSettings.copy(alertDays = days),
-                                            )
-                                        },
-                                        shape = RoundedCornerShape(999.dp),
-                                        color = if (selected) {
-                                            FreshKitchenColors.PrimaryTealDeep
-                                        } else {
-                                            FreshKitchenColors.SurfaceMuted
-                                        },
-                                        modifier = Modifier.weight(1f),
+                                        onClick = { showTimeMenu = true },
+                                        shape = FreshKitchenShapes.Pill,
+                                        color = FreshKitchenColors.SurfaceMuted,
                                     ) {
                                         Row(
-                                            modifier = Modifier.padding(vertical = 9.dp),
-                                            horizontalArrangement = Arrangement.Center,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                             verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                                         ) {
-                                            if (selected) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Check,
-                                                    contentDescription = null,
-                                                    tint = Color.White,
-                                                    modifier = Modifier.size(14.dp),
-                                                )
-                                                Spacer(Modifier.width(3.dp))
-                                            }
+                                            Icon(
+                                                imageVector = Icons.Outlined.Schedule,
+                                                contentDescription = null,
+                                                tint = FreshKitchenColors.PrimaryTealDeep,
+                                                modifier = Modifier.size(16.dp),
+                                            )
                                             Text(
-                                                text = "D-$days",
-                                                style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (selected) Color.White else FreshKitchenColors.TextPrimary,
+                                                text = timeLabel,
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = FreshKitchenColors.TextPrimary,
+                                            )
+                                            Icon(
+                                                imageVector = Icons.Outlined.KeyboardArrowDown,
+                                                contentDescription = null,
+                                                tint = FreshKitchenColors.TextMuted,
+                                                modifier = Modifier.size(16.dp),
+                                            )
+                                        }
+                                    }
+                                    DropdownMenu(
+                                        expanded = showTimeMenu,
+                                        onDismissRequest = { showTimeMenu = false },
+                                    ) {
+                                        listOf(
+                                            8 to "오전 08:00",
+                                            9 to "오전 09:00",
+                                            12 to "오후 12:00",
+                                            18 to "오후 06:00",
+                                            20 to "오후 08:00",
+                                        ).forEach { (hr, label) ->
+                                            DropdownMenuItem(
+                                                text = { Text(label) },
+                                                onClick = {
+                                                    showTimeMenu = false
+                                                    onUpdateNotificationSettings(
+                                                        notificationSettings.copy(hour = hr, minute = 0),
+                                                    )
+                                                },
                                             )
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        // Notification Time Row with Dropdown Pill
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "알림 시간",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = FreshKitchenColors.TextPrimary,
-                                )
-                                Text(
-                                    text = "식재료 확인에 가장 편한 시간",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = FreshKitchenColors.TextMuted,
-                                )
-                            }
-                            Box {
-                                val timeLabel = when (notificationSettings.hour) {
-                                    in 0..11 -> "오전 ${String.format("%02d:00", notificationSettings.hour)}"
-                                    12 -> "오후 12:00"
-                                    else -> "오후 ${String.format("%02d:00", notificationSettings.hour - 12)}"
-                                }
-                                Surface(
-                                    onClick = { showTimeMenu = true },
-                                    shape = RoundedCornerShape(999.dp),
-                                    color = FreshKitchenColors.SurfaceMuted,
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Schedule,
-                                            contentDescription = null,
-                                            tint = FreshKitchenColors.PrimaryTealDeep,
-                                            modifier = Modifier.size(16.dp),
-                                        )
-                                        Text(
-                                            text = timeLabel,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = FreshKitchenColors.TextPrimary,
-                                        )
-                                        Icon(
-                                            imageVector = Icons.Rounded.KeyboardArrowDown,
-                                            contentDescription = null,
-                                            tint = FreshKitchenColors.TextMuted,
-                                            modifier = Modifier.size(16.dp),
-                                        )
-                                    }
-                                }
-                                DropdownMenu(
-                                    expanded = showTimeMenu,
-                                    onDismissRequest = { showTimeMenu = false },
-                                ) {
-                                    listOf(
-                                        8 to "오전 08:00",
-                                        9 to "오전 09:00",
-                                        12 to "오후 12:00",
-                                        18 to "오후 06:00",
-                                        20 to "오후 08:00",
-                                    ).forEach { (hr, label) ->
-                                        DropdownMenuItem(
-                                            text = { Text(label) },
-                                            onClick = {
-                                                showTimeMenu = false
-                                                onUpdateNotificationSettings(
-                                                    notificationSettings.copy(hour = hr, minute = 0),
-                                                )
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "만료 품목 당일 재알림",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = FreshKitchenColors.TextPrimary,
-                                )
-                                Text(
-                                    text = "소비 기한이 지난 식재료도 함께 안내합니다",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = FreshKitchenColors.TextMuted,
-                                )
-                            }
-                            Switch(
-                                checked = notificationSettings.includeExpired,
-                                onCheckedChange = {
-                                    onUpdateNotificationSettings(
-                                        notificationSettings.copy(includeExpired = it),
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "만료 품목 당일 재알림",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = FreshKitchenColors.TextPrimary,
                                     )
-                                },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = FreshKitchenColors.PrimaryTealDeep,
-                                ),
-                            )
-                        }
+                                    Text(
+                                        text = "소비 기한이 지난 식재료도 함께 안내합니다",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = FreshKitchenColors.TextMuted,
+                                    )
+                                }
+                                Switch(
+                                    checked = notificationSettings.includeExpired,
+                                    onCheckedChange = {
+                                        onUpdateNotificationSettings(
+                                            notificationSettings.copy(includeExpired = it),
+                                        )
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = FreshKitchenColors.PrimaryTealDeep,
+                                    ),
+                                )
+                            }
 
-                        // Shield Info Banner
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(FreshKitchenColors.SurfaceMuted)
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.VerifiedUser,
-                                contentDescription = null,
-                                tint = FreshKitchenColors.PrimaryTealDeep,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Text(
-                                text = "기기 로컬 알림으로 서버 장애나 백그라운드 끊김 없이 정확하게 정시에 울립니다.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = FreshKitchenColors.TextSecondary,
-                            )
+                            // Shield Info Banner
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(FreshKitchenShapes.Control)
+                                    .background(FreshKitchenColors.SurfaceMuted)
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.VerifiedUser,
+                                    contentDescription = null,
+                                    tint = FreshKitchenColors.PrimaryTealDeep,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text(
+                                    text = "기기 로컬 알림으로 서버 장애나 백그라운드 끊김 없이 정확하게 정시에 울립니다.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = FreshKitchenColors.TextSecondary,
+                                )
+                            }
                         }
                     }
                 }
@@ -695,7 +697,7 @@ fun FamilyAndSettingsScreen(
         item {
             StitchCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Column(
-                    modifier = Modifier.padding(18.dp),
+                    modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     Row(
@@ -716,7 +718,6 @@ fun FamilyAndSettingsScreen(
                             Text(
                                 text = "최근 변경 이력",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.ExtraBold,
                                 color = FreshKitchenColors.TextPrimary,
                             )
                         }
@@ -743,6 +744,46 @@ fun FamilyAndSettingsScreen(
             }
         }
     }
+
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            title = {
+                Text(
+                    text = "로그아웃할까요?",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = FreshKitchenColors.TextPrimary,
+                )
+            },
+            text = {
+                Text(
+                    text = "로그아웃하면 기기에 저장된 로그인 세션과 로컬 알림 예약이 해제됩니다.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = FreshKitchenColors.TextSecondary,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutConfirm = false
+                        onLogout()
+                    },
+                    shape = FreshKitchenShapes.Control,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = FreshKitchenColors.ExpiredText,
+                        contentColor = Color.White,
+                    ),
+                ) {
+                    Text("로그아웃")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirm = false }) {
+                    Text("취소", color = FreshKitchenColors.TextSecondary)
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -751,17 +792,10 @@ private fun StitchCard(
     content: @Composable () -> Unit,
 ) {
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 4.dp,
-                shape = RoundedCornerShape(22.dp),
-                ambientColor = Color.Black.copy(alpha = 0.05f),
-                spotColor = Color.Black.copy(alpha = 0.05f),
-            ),
-        shape = RoundedCornerShape(22.dp),
+        modifier = modifier.fillMaxWidth(),
+        shape = FreshKitchenShapes.Card,
         color = FreshKitchenColors.SurfaceWhite,
-        border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle.copy(alpha = 0.6f)),
+        border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
         content = content,
     )
 }
@@ -776,7 +810,7 @@ private fun MemberAvatarTile(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(FreshKitchenShapes.Control)
             .background(FreshKitchenColors.SurfaceMuted)
             .padding(vertical = 12.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -788,14 +822,13 @@ private fun MemberAvatarTile(
                     .size(44.dp)
                     .clip(CircleShape)
                     .background(
-                        if (isHighlighted) FreshKitchenColors.PrimaryTealDeep else Color(0xFFCBD5E1),
+                        if (isHighlighted) FreshKitchenColors.PrimaryTealDeep else FreshKitchenColors.NeutralTrack,
                     ),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = name.take(1).ifBlank { "?" },
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     color = if (isHighlighted) Color.White else FreshKitchenColors.TextPrimary,
                 )
             }

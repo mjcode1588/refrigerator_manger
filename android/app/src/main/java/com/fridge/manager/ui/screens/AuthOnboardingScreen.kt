@@ -1,5 +1,14 @@
 package com.fridge.manager.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,35 +20,31 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.material.icons.automirrored.rounded.Login
-import androidx.compose.material.icons.rounded.Badge
-import androidx.compose.material.icons.rounded.Cancel
-import androidx.compose.material.icons.rounded.ChevronLeft
-import androidx.compose.material.icons.rounded.ContentPaste
-import androidx.compose.material.icons.rounded.Eco
-import androidx.compose.material.icons.rounded.GroupAdd
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Key
-import androidx.compose.material.icons.rounded.Kitchen
-import androidx.compose.material.icons.rounded.Link
-import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PlayCircleOutline
-import androidx.compose.material.icons.rounded.VerifiedUser
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.Login
+import androidx.compose.material.icons.outlined.Badge
+import androidx.compose.material.icons.outlined.Cancel
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.GroupAdd
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Key
+import androidx.compose.material.icons.outlined.Kitchen
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.VerifiedUser
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -59,8 +64,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -76,6 +79,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fridge.manager.BuildConfig
 import com.fridge.manager.ui.theme.FreshKitchenColors
+import com.fridge.manager.ui.theme.FreshKitchenMotion
+import com.fridge.manager.ui.theme.FreshKitchenShapes
 
 @Composable
 fun AuthOnboardingScreen(
@@ -108,66 +113,28 @@ fun AuthOnboardingScreen(
             .padding(horizontal = 20.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
-        // Stitch Hero Icon with floating leaf & peach accents
-        Box(
-            modifier = Modifier.size(100.dp),
-            contentAlignment = Alignment.Center,
+        // Refined minimal brand emblem
+        Surface(
+            modifier = Modifier.size(64.dp),
+            shape = RoundedCornerShape(18.dp),
+            color = FreshKitchenColors.PrimaryTealDeep,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(84.dp)
-                    .clip(CircleShape)
-                    .background(FreshKitchenColors.PrimaryMint),
-                contentAlignment = Alignment.Center,
-            ) {
+            Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    imageVector = Icons.Rounded.Kitchen,
+                    imageVector = Icons.Outlined.Kitchen,
                     contentDescription = null,
-                    tint = FreshKitchenColors.PrimaryTealDeep,
-                    modifier = Modifier.size(38.dp),
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = (-4).dp, y = 4.dp)
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF6EE7B7)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Eco,
-                    contentDescription = null,
-                    tint = FreshKitchenColors.PrimaryDark,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .offset(x = 4.dp, y = (-4).dp)
-                    .size(26.dp)
-                    .clip(CircleShape)
-                    .background(FreshKitchenColors.PeachSoft),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.ChevronLeft,
-                    contentDescription = null,
-                    tint = FreshKitchenColors.TextPrimary,
-                    modifier = Modifier.size(16.dp),
+                    tint = Color.White,
+                    modifier = Modifier.size(30.dp),
                 )
             }
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
             text = "우리집 냉장고",
-            fontSize = 26.sp,
-            fontWeight = FontWeight.ExtraBold,
+            style = MaterialTheme.typography.headlineMedium,
             color = FreshKitchenColors.TextPrimary,
         )
         Spacer(Modifier.height(6.dp))
@@ -182,27 +149,20 @@ fun AuthOnboardingScreen(
 
         if (!isLoggedIn) {
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(
-                        elevation = 6.dp,
-                        shape = RoundedCornerShape(24.dp),
-                        ambientColor = Color.Black.copy(alpha = 0.06f),
-                        spotColor = Color.Black.copy(alpha = 0.06f),
-                    ),
-                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.fillMaxWidth(),
+                shape = FreshKitchenShapes.Card,
                 color = FreshKitchenColors.SurfaceWhite,
-                border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle.copy(alpha = 0.6f)),
+                border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
             ) {
                 Column(
-                    modifier = Modifier.padding(22.dp),
+                    modifier = Modifier.padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     // 2단 세그먼트 탭: 로그인 / 가족 등록
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(FreshKitchenShapes.Control)
                             .background(FreshKitchenColors.SurfaceMuted)
                             .padding(4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -221,19 +181,43 @@ fun AuthOnboardingScreen(
                         )
                     }
 
-                    if (authTab == 0) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                text = "아이디",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = FreshKitchenColors.TextSecondary,
-                            )
+                    AnimatedContent(
+                        targetState = authTab,
+                        transitionSpec = {
+                            val dir = if (targetState > initialState) 1 else -1
+                            (fadeIn(
+                                animationSpec = tween(
+                                    durationMillis = FreshKitchenMotion.StandardMs,
+                                    easing = FreshKitchenMotion.EnterEasing,
+                                ),
+                            ) + slideInHorizontally(
+                                animationSpec = tween(
+                                    durationMillis = FreshKitchenMotion.StandardMs,
+                                    easing = FreshKitchenMotion.EnterEasing,
+                                ),
+                                initialOffsetX = { it / 16 * dir },
+                            )) togetherWith (fadeOut(
+                                animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+                            ) + slideOutHorizontally(
+                                animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+                                targetOffsetX = { -it / 16 * dir },
+                            )) using SizeTransform(clip = false)
+                        },
+                        label = "auth_tab_transition",
+                    ) { currentTab ->
+                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            if (currentTab == 0) {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(
+                                        text = "아이디",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = FreshKitchenColors.TextSecondary,
+                                    )
                             SoftInputField(
                                 value = username,
                                 onValueChange = { username = it },
                                 placeholder = "영문·숫자 아이디 입력",
-                                leadingIcon = Icons.Rounded.Person,
+                                leadingIcon = Icons.Outlined.Person,
                                 keyboardOptions = KeyboardOptions(
                                     keyboardType = KeyboardType.Ascii,
                                     imeAction = ImeAction.Next,
@@ -246,14 +230,13 @@ fun AuthOnboardingScreen(
                             Text(
                                 text = "비밀번호",
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
                                 color = FreshKitchenColors.TextSecondary,
                             )
                             SoftInputField(
                                 value = password,
                                 onValueChange = { password = it },
                                 placeholder = "비밀번호 입력 (8자 이상)",
-                                leadingIcon = Icons.Rounded.Lock,
+                                leadingIcon = Icons.Outlined.Lock,
                                 isPassword = true,
                                 passwordVisible = passwordVisible,
                                 onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
@@ -269,7 +252,7 @@ fun AuthOnboardingScreen(
                         Button(
                             onClick = { onLogin(username.trim(), password) },
                             enabled = canLogin,
-                            shape = RoundedCornerShape(14.dp),
+                            shape = FreshKitchenShapes.Control,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = FreshKitchenColors.PrimaryTealDeep,
                                 contentColor = Color.White,
@@ -278,7 +261,7 @@ fun AuthOnboardingScreen(
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(52.dp),
+                                .height(50.dp),
                         ) {
                             if (isLoggingIn) {
                                 CircularProgressIndicator(
@@ -287,12 +270,12 @@ fun AuthOnboardingScreen(
                                     color = Color.White,
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text("서버에 연결 중입니다...", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                Text("서버에 연결 중입니다...", style = MaterialTheme.typography.labelLarge)
                             } else {
-                                Text("로그인", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                Text("로그인", style = MaterialTheme.typography.labelLarge)
                                 Spacer(Modifier.width(6.dp))
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Rounded.Login,
+                                    imageVector = Icons.AutoMirrored.Outlined.Login,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp),
                                 )
@@ -303,14 +286,13 @@ fun AuthOnboardingScreen(
                             Text(
                                 text = "닉네임",
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
                                 color = FreshKitchenColors.TextSecondary,
                             )
                             SoftInputField(
                                 value = nickname,
                                 onValueChange = { nickname = it },
                                 placeholder = "예: 남편, 아내",
-                                leadingIcon = Icons.Rounded.Badge,
+                                leadingIcon = Icons.Outlined.Badge,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                                 modifier = Modifier.fillMaxWidth(),
                             )
@@ -320,14 +302,13 @@ fun AuthOnboardingScreen(
                             Text(
                                 text = "아이디",
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
                                 color = FreshKitchenColors.TextSecondary,
                             )
                             SoftInputField(
                                 value = username,
                                 onValueChange = { username = it },
                                 placeholder = "영문·숫자·_·- (3~32자)",
-                                leadingIcon = Icons.Rounded.Person,
+                                leadingIcon = Icons.Outlined.Person,
                                 keyboardOptions = KeyboardOptions(
                                     keyboardType = KeyboardType.Ascii,
                                     imeAction = ImeAction.Next,
@@ -340,14 +321,13 @@ fun AuthOnboardingScreen(
                             Text(
                                 text = "비밀번호",
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
                                 color = FreshKitchenColors.TextSecondary,
                             )
                             SoftInputField(
                                 value = password,
                                 onValueChange = { password = it },
                                 placeholder = "8자 이상 비밀번호",
-                                leadingIcon = Icons.Rounded.Lock,
+                                leadingIcon = Icons.Outlined.Lock,
                                 isPassword = true,
                                 passwordVisible = passwordVisible,
                                 onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
@@ -363,14 +343,13 @@ fun AuthOnboardingScreen(
                             Text(
                                 text = "가족 등록코드",
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
                                 color = FreshKitchenColors.TextSecondary,
                             )
                             SoftInputField(
                                 value = registrationCode,
                                 onValueChange = { registrationCode = it },
                                 placeholder = "서버에 설정된 가족 등록코드",
-                                leadingIcon = Icons.Rounded.Key,
+                                leadingIcon = Icons.Outlined.Key,
                                 isPassword = true,
                                 passwordVisible = registrationCodeVisible,
                                 onTogglePasswordVisibility = {
@@ -399,7 +378,7 @@ fun AuthOnboardingScreen(
                                 )
                             },
                             enabled = canRegister,
-                            shape = RoundedCornerShape(14.dp),
+                            shape = FreshKitchenShapes.Control,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = FreshKitchenColors.PrimaryTealDeep,
                                 contentColor = Color.White,
@@ -408,7 +387,7 @@ fun AuthOnboardingScreen(
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(52.dp),
+                                .height(50.dp),
                         ) {
                             if (isLoggingIn) {
                                 CircularProgressIndicator(
@@ -417,10 +396,12 @@ fun AuthOnboardingScreen(
                                     color = Color.White,
                                 )
                                 Spacer(Modifier.width(8.dp))
-                                Text("서버에 연결 중입니다...", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                Text("서버에 연결 중입니다...", style = MaterialTheme.typography.labelLarge)
                             } else {
-                                Text("우리집 계정 등록하기", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                Text("우리집 계정 등록하기", style = MaterialTheme.typography.labelLarge)
                             }
+                        }
+                    }
                         }
                     }
 
@@ -428,14 +409,14 @@ fun AuthOnboardingScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(FreshKitchenShapes.Control)
                             .background(FreshKitchenColors.MintGlow)
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.VerifiedUser,
+                            imageVector = Icons.Outlined.VerifiedUser,
                             contentDescription = null,
                             tint = FreshKitchenColors.PrimaryTealDeep,
                             modifier = Modifier.size(16.dp),
@@ -443,7 +424,6 @@ fun AuthOnboardingScreen(
                         Text(
                             text = "우리집 가족 전용 · 2인 등록 완료 시 외부 가입 자동 차단",
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
                             color = FreshKitchenColors.PrimaryDark,
                         )
                     }
@@ -451,13 +431,13 @@ fun AuthOnboardingScreen(
             }
 
             if (BuildConfig.DEBUG) {
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(16.dp))
 
                 // Preview demo account pill (Debug 빌드 전용)
                 Surface(
                     onClick = { onDevLogin("민수") },
                     enabled = !isLoggingIn,
-                    shape = RoundedCornerShape(999.dp),
+                    shape = FreshKitchenShapes.Pill,
                     color = FreshKitchenColors.PrimarySoft,
                 ) {
                     Row(
@@ -466,7 +446,7 @@ fun AuthOnboardingScreen(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.PlayCircleOutline,
+                            imageVector = Icons.Outlined.PlayCircleOutline,
                             contentDescription = null,
                             tint = FreshKitchenColors.PrimaryDark,
                             modifier = Modifier.size(18.dp),
@@ -474,7 +454,6 @@ fun AuthOnboardingScreen(
                         Text(
                             text = "체험 계정으로 먼저 둘러보기 (Debug)",
                             style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
                             color = FreshKitchenColors.PrimaryDark,
                         )
                     }
@@ -495,8 +474,7 @@ fun AuthOnboardingScreen(
             ) {
                 Text(
                     text = "우리집 공간을 시작해볼까요?",
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    style = MaterialTheme.typography.titleLarge,
                     color = FreshKitchenColors.TextPrimary,
                 )
                 Spacer(Modifier.height(4.dp))
@@ -509,167 +487,139 @@ fun AuthOnboardingScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Option A: Create Household (with subtle mint glow)
+            // Option A: Create Household (flat surface, no gradient)
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(
-                        elevation = 6.dp,
-                        shape = RoundedCornerShape(24.dp),
-                        ambientColor = Color.Black.copy(alpha = 0.05f),
-                        spotColor = Color.Black.copy(alpha = 0.05f),
-                    ),
-                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.fillMaxWidth(),
+                shape = FreshKitchenShapes.Card,
                 color = FreshKitchenColors.SurfaceWhite,
-                border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle.copy(alpha = 0.6f)),
+                border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
             ) {
-                Box(
-                    modifier = Modifier.background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                FreshKitchenColors.SurfaceWhite,
-                                FreshKitchenColors.MintGlow,
-                            ),
-                        ),
-                    ),
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Home,
-                                    contentDescription = null,
-                                    tint = FreshKitchenColors.PrimaryTealDeep,
-                                    modifier = Modifier.size(22.dp),
-                                )
+                            Icon(
+                                imageVector = Icons.Outlined.Home,
+                                contentDescription = null,
+                                tint = FreshKitchenColors.PrimaryTealDeep,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                text = "새 우리집 만들기",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = FreshKitchenColors.TextPrimary,
+                            )
+                        }
+                        Surface(
+                            shape = FreshKitchenShapes.Pill,
+                            color = FreshKitchenColors.PrimarySoft,
+                        ) {
+                            Text(
+                                text = "추천",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = FreshKitchenColors.PrimaryDark,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "우리집 별칭",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = FreshKitchenColors.TextSecondary,
+                    )
+
+                    SoftInputField(
+                        value = householdName,
+                        onValueChange = { householdName = it },
+                        placeholder = "예: 행복한 우리집",
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(FreshKitchenShapes.Control)
+                            .background(FreshKitchenColors.SurfaceMuted)
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Kitchen,
+                                contentDescription = null,
+                                tint = FreshKitchenColors.PrimaryTealDeep,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Column {
                                 Text(
-                                    text = "새 우리집 만들기",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.ExtraBold,
+                                    text = "기본 보관 장소 자동 생성",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = FreshKitchenColors.TextPrimary,
                                 )
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(999.dp),
-                                color = FreshKitchenColors.PrimaryMint,
-                            ) {
                                 Text(
-                                    text = "추천",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = FreshKitchenColors.PrimaryDark,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    text = "냉장실 · 냉동실 · 실온 팬트리",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = FreshKitchenColors.TextMuted,
                                 )
                             }
                         }
-
-                        Text(
-                            text = "우리집 별칭",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = FreshKitchenColors.TextSecondary,
-                        )
-
-                        SoftInputField(
-                            value = householdName,
-                            onValueChange = { householdName = it },
-                            placeholder = "예: 행복한 우리집",
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(FreshKitchenColors.SurfaceMuted)
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Kitchen,
-                                    contentDescription = null,
-                                    tint = FreshKitchenColors.PrimaryTealDeep,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                                Column {
-                                    Text(
-                                        text = "기본 보관 장소 자동 생성",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = FreshKitchenColors.TextPrimary,
-                                    )
-                                    Text(
-                                        text = "냉장실 · 냉동실 · 실온 팬트리",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = FreshKitchenColors.TextMuted,
-                                    )
-                                }
-                            }
-                            Switch(
-                                checked = createDefaultLocations,
-                                onCheckedChange = { createDefaultLocations = it },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = FreshKitchenColors.PrimaryTealDeep,
-                                ),
-                            )
-                        }
-
-                        Button(
-                            onClick = { if (householdName.isNotBlank()) onCreateHousehold(householdName.trim()) },
-                            enabled = householdName.isNotBlank(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = FreshKitchenColors.PrimaryTealDeep,
-                                contentColor = Color.White,
+                        Switch(
+                            checked = createDefaultLocations,
+                            onCheckedChange = { createDefaultLocations = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = FreshKitchenColors.PrimaryTealDeep,
                             ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(52.dp),
-                        ) {
-                            Text("냉장고 공간 생성하기", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.width(6.dp))
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
+                        )
+                    }
+
+                    Button(
+                        onClick = { if (householdName.isNotBlank()) onCreateHousehold(householdName.trim()) },
+                        enabled = householdName.isNotBlank(),
+                        shape = FreshKitchenShapes.Control,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = FreshKitchenColors.PrimaryTealDeep,
+                            contentColor = Color.White,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                    ) {
+                        Text("냉장고 공간 생성하기", style = MaterialTheme.typography.labelLarge)
+                        Spacer(Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(14.dp))
 
             // Option B: Join via Invite Code
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(
-                        elevation = 6.dp,
-                        shape = RoundedCornerShape(24.dp),
-                        ambientColor = Color.Black.copy(alpha = 0.05f),
-                        spotColor = Color.Black.copy(alpha = 0.05f),
-                    ),
-                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.fillMaxWidth(),
+                shape = FreshKitchenShapes.Card,
                 color = FreshKitchenColors.SurfaceWhite,
-                border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle.copy(alpha = 0.6f)),
+                border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
             ) {
                 Column(
                     modifier = Modifier.padding(20.dp),
@@ -680,7 +630,7 @@ fun AuthOnboardingScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Link,
+                            imageVector = Icons.Outlined.Link,
                             contentDescription = null,
                             tint = FreshKitchenColors.TextMuted,
                             modifier = Modifier.size(20.dp),
@@ -688,7 +638,6 @@ fun AuthOnboardingScreen(
                         Text(
                             text = "초대 코드로 참여하기",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold,
                             color = FreshKitchenColors.TextPrimary,
                         )
                     }
@@ -701,7 +650,7 @@ fun AuthOnboardingScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(FreshKitchenShapes.Control)
                             .background(FreshKitchenColors.SurfaceMuted)
                             .padding(horizontal = 14.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -725,7 +674,7 @@ fun AuthOnboardingScreen(
                                 singleLine = true,
                                 textStyle = TextStyle(
                                     color = FreshKitchenColors.TextPrimary,
-                                    fontWeight = FontWeight.ExtraBold,
+                                    fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
                                     letterSpacing = 2.sp,
                                     textAlign = TextAlign.Center,
@@ -742,7 +691,7 @@ fun AuthOnboardingScreen(
                                 }
                             },
                             shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFFE2E8F0),
+                            color = FreshKitchenColors.BorderSubtle,
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
@@ -750,7 +699,7 @@ fun AuthOnboardingScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.ContentPaste,
+                                    imageVector = Icons.Outlined.ContentPaste,
                                     contentDescription = null,
                                     tint = FreshKitchenColors.TextSecondary,
                                     modifier = Modifier.size(14.dp),
@@ -758,7 +707,6 @@ fun AuthOnboardingScreen(
                                 Text(
                                     text = "붙여넣기",
                                     style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold,
                                     color = FreshKitchenColors.TextSecondary,
                                 )
                             }
@@ -768,7 +716,7 @@ fun AuthOnboardingScreen(
                     Button(
                         onClick = { if (inviteCode.isNotBlank()) onJoinHousehold(inviteCode.trim()) },
                         enabled = inviteCode.isNotBlank(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = FreshKitchenShapes.Control,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (inviteCode.isNotBlank()) {
                                 FreshKitchenColors.PrimaryTealDeep
@@ -788,16 +736,17 @@ fun AuthOnboardingScreen(
                             .height(50.dp),
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.GroupAdd,
+                            imageVector = Icons.Outlined.GroupAdd,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(Modifier.width(6.dp))
-                        Text("가족 공간 참여하기", fontWeight = FontWeight.Bold)
+                        Text("가족 공간 참여하기", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
         }
+
         Spacer(Modifier.height(24.dp))
     }
 }
@@ -809,10 +758,20 @@ private fun AuthSegmentTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val bgColor by animateColorAsState(
+        targetValue = if (selected) FreshKitchenColors.PrimaryTealDeep else Color.Transparent,
+        animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+        label = "segment_bg",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) Color.White else FreshKitchenColors.TextMuted,
+        animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+        label = "segment_content",
+    )
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) FreshKitchenColors.PrimaryTealDeep else Color.Transparent)
+            .background(bgColor)
             .clickable(onClick = onClick)
             .padding(vertical = 10.dp),
         contentAlignment = Alignment.Center,
@@ -820,8 +779,7 @@ private fun AuthSegmentTab(
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = if (selected) Color.White else FreshKitchenColors.TextMuted,
+            color = contentColor,
         )
     }
 }
@@ -840,8 +798,8 @@ private fun SoftInputField(
 ) {
     Row(
         modifier = modifier
-            .height(50.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .height(48.dp)
+            .clip(FreshKitchenShapes.Control)
             .background(FreshKitchenColors.SurfaceMuted)
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -859,8 +817,8 @@ private fun SoftInputField(
             if (value.isEmpty()) {
                 Text(
                     text = placeholder,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = FreshKitchenColors.TextMuted,
-                    fontSize = 14.sp,
                 )
             }
             BasicTextField(
@@ -889,9 +847,9 @@ private fun SoftInputField(
             ) {
                 Icon(
                     imageVector = if (passwordVisible) {
-                        Icons.Rounded.VisibilityOff
+                        Icons.Outlined.VisibilityOff
                     } else {
-                        Icons.Rounded.Visibility
+                        Icons.Outlined.Visibility
                     },
                     contentDescription = if (passwordVisible) "숨기기" else "표시",
                     tint = FreshKitchenColors.TextMuted,
@@ -904,7 +862,7 @@ private fun SoftInputField(
                 modifier = Modifier.size(28.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Cancel,
+                    imageVector = Icons.Outlined.Cancel,
                     contentDescription = "지우기",
                     tint = FreshKitchenColors.TextMuted.copy(alpha = 0.7f),
                     modifier = Modifier.size(18.dp),

@@ -101,6 +101,14 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - [x] **네이버 MYBOX 업로더 구현 (`scripts/upload_to_mybox.py`)**: 2단계 파일 업로드(`POST /v1/drive/files` → `uploadUrl` `multipart/form-data` `Filedata`), 대상 폴더 조회·자동 생성(`GET /v1/drive/resources`, `POST /v1/drive/folders`) 및 `unittest` 단위 테스트 작성
 - [x] **GitHub Actions 워크플로우 구축 (`.github/workflows/deploy-android-apk.yml`)**: `scripts/tests` + `testDebugUnitTest` → Release 서명 빌드 → `apksigner verify` 서명 검증 → OCI 서버 SCP/SSH 배포(기본) + GitHub Artifact 백업 + 선택적 네이버 MYBOX 미러 업로드
 
+### Phase 5.3: Android UI 현대화 및 디자인 시스템 정합성 개선 (`ui-skills` 적용)
+`ui-skills` (`create-design-md`, `improve-ui`, `baseline-ui`) 기반으로 `android/DESIGN.md`와 실행 계획(`design-plans/`)을 먼저 수립한 뒤, 타이포그래피·토큰·빈 상태·확인 다이얼로그·상단/카드 밀도·모션·고급 벡터 아이콘을 일괄 개선합니다.
+- [x] **디자인 시스템 및 개선 계획 수립**: `android/DESIGN.md` 작성·검증(`@google/design.md lint/export`) 및 `design-plans/01~04` 작성
+- [x] **Plan 01 — 타이포그래피 스케일 복원 및 토큰 통일**: `Theme.kt` `FreshTypography` M3 스케일 복원(`tnum` 유지), `FreshKitchenShapes`(`16dp`/`12dp`/`999dp`) 통일, `ExpiringBg`(`#FEF3C7`) 정렬 및 그라데이션·하드코딩 색상 제거
+- [x] **Plan 02 — 빈 상태 CTA 및 파괴적 액션 확인 다이얼로그**: `InventoryScreen` 빈 상태 단일 CTA(`필터 초기화`/`품목 등록하기`) 추가, 장소 삭제·품목 폐기·로그아웃 확인 `AlertDialog` 적용
+- [x] **Plan 03 — 재고 화면 상단 다이어트 및 품목 카드 계층 현대화**: 상단 앱바·가구 스위처 통합, 중복 트리 편집 버튼 제거, `FreshItemCard` 중복 경고 배지·상단 바 정리 및 여백·가독성 개선
+- [x] **Plan 04 — 자연스러운 화면 전환, 마이크로 인터랙션 및 고급 벡터 아이콘 통일**: `FreshKitchenMotion`(150~200ms `ease-out`) 기준 적용(인증↔메인 `Crossfade`, 하단 탭·로그인 세그먼트 `AnimatedContent`, `LazyColumn` `animateItem()`, 남은 양 바·칩·접힘 패널 전환) 및 이모지·클립아트 아이콘을 정제된 `Icons.Outlined.*` 벡터 아이콘으로 전면 교체
+
 ---
 
 ## 3. 단계 완료 기준 (Definition of Done)
@@ -127,3 +135,4 @@ uff 통과). Android APK 하드닝은 미착수.
 - **2026-11-25**: **Phase 5.1 가족 전용 자체 인증 전환 완료** — Kakao/Google 소셜 로그인 제거, `Stitch` 로그인 시안(`5355023e5b484c05b05ecc476efc7f15`) 개편, FastAPI(`POST /auth/register`, `POST /auth/login`, `scrypt` 해싱, 5회 실패 15분 잠금, `FAMILY_REGISTRATION_CODE` + 최대 2명 자동 잠금, Alembic `0004_add_user_credentials`) 및 Android(`로그인`/`가족 등록` 세그먼트 탭 UI) 구현. `ruff check .`, `pytest`(19 passed), Android `testDebugUnitTest`·`assembleDebug` 통과.
 - **2026-11-25**: **Phase 5.2 Android Release APK 자동 서명 및 네이버 MYBOX 배포 구축 완료** — `android/app/build.gradle.kts` `signingConfigs` 및 CI 버전/URL 주입 지원, `scripts/upload_to_mybox.py`(네이버 MYBOX Open API 2단계 업로드 및 폴더 자동 생성) + `scripts/tests/test_upload_to_mybox.py`(4건 통과), `.github/workflows/deploy-android-apk.yml`(테스트 → Release 서명 빌드 → `apksigner verify` → Artifact/MYBOX 업로드), `.gitignore` 키스토어 차단 및 `02-android-setup.md` 가이드 반영. Android `testDebugUnitTest`·`assembleRelease` 및 YAML 검증 통과.
 - **2026-11-25**: **Phase 5.2 기본 APK 배포 대상을 OCI 서버(`myfridges.duckdns.org`)로 전환** — `NAVER_MY_BOX` PAT 180일 만료 제약을 해소하기 위해 `deploy-android-apk.yml`의 기본 배포를 `OCI_SSH_KEY` 기반 SCP/SSH 배포로 전환하고 네이버 MYBOX 업로드는 선택적 미러(`continue-on-error: true`)로 조정. `server/compose.prod.yml`(`./releases:/srv/releases:ro`), `server/Caddyfile`(`/releases/{$APK_DOWNLOAD_PATH:apk}/*` 정적 호스팅), `server/.env.example`(`APK_DOWNLOAD_PATH`), `.gitignore`(`server/releases/`) 및 가이드 문서 반영.
+- **2026-11-25**: **Phase 5.3 Android UI 현대화 및 디자인 시스템 정합성 개선 계획 등록** — `ui-skills`(`create-design-md`, `improve-ui`, `baseline-ui`) 기반으로 `android/DESIGN.md` 작성·검증(`@google/design.md lint/export` 0 errors, 0 warnings) 및 `design-plans/01~04`(타이포/토큰, 빈 상태/확인 다이얼로그, 상단/카드 밀도, 화면 전환/모션) 실행 계획서 작성.

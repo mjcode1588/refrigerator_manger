@@ -4,6 +4,14 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -33,16 +41,37 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.input.KeyboardType
 import kotlin.math.roundToInt
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.automirrored.rounded.DriveFileMove
+import androidx.compose.material.icons.outlined.AcUnit
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AllInclusive
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Kitchen
 import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.outlined.LocalCafe
+import androidx.compose.material.icons.outlined.LocalDrink
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.PriorityHigh
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.SetMeal
+import androidx.compose.material.icons.outlined.SoupKitchen
+import androidx.compose.material.icons.outlined.SwapVert
+import androidx.compose.material.icons.outlined.TakeoutDining
 import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material.icons.rounded.AccountTree
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AllInclusive
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.Cancel
@@ -56,12 +85,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Kitchen
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Place
-import androidx.compose.material.icons.rounded.PriorityHigh
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Schedule
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.SwapVert
-import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -90,7 +114,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
@@ -115,6 +138,8 @@ import com.fridge.manager.domain.model.FoodItem
 import com.fridge.manager.domain.model.HouseholdInfo
 import com.fridge.manager.domain.model.StorageLocationNode
 import com.fridge.manager.ui.theme.FreshKitchenColors
+import com.fridge.manager.ui.theme.FreshKitchenMotion
+import com.fridge.manager.ui.theme.FreshKitchenShapes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -131,19 +156,31 @@ private enum class ExpiryQuickFilter(val label: String) {
 private data class CategoryMeta(
     val code: String,
     val label: String,
-    val emoji: String,
+    val icon: ImageVector,
+    val iconTint: Color,
     val tintBg: Color,
 )
 
 private val CATEGORIES = listOf(
-    CategoryMeta("FRESH", "신선식품", "🥬", Color(0xFFDCFCE7)),
-    CategoryMeta("MEAT_FISH", "육류/수산", "🥩", Color(0xFFFEE2E2)),
-    CategoryMeta("DAIRY", "유제품", "🥛", Color(0xFFE0F2FE)),
-    CategoryMeta("PROCESSED", "가공/완제품", "🍜", Color(0xFFFEF3C7)),
-    CategoryMeta("BEVERAGE", "음료", "🥤", Color(0xFFEDE9FE)),
-    CategoryMeta("SAUCE", "양념/소스", "🧂", Color(0xFFFFEDD5)),
-    CategoryMeta("ETC", "기타", "📦", Color(0xFFF1F5F9)),
+    CategoryMeta("FRESH", "신선식품", Icons.Outlined.Eco, Color(0xFF15803D), Color(0xFFECFDF5)),
+    CategoryMeta("MEAT_FISH", "육류/수산", Icons.Outlined.SetMeal, Color(0xFFB91C1C), Color(0xFFFEF2F2)),
+    CategoryMeta("DAIRY", "유제품", Icons.Outlined.LocalDrink, Color(0xFF0369A1), Color(0xFFF0F9FF)),
+    CategoryMeta("PROCESSED", "가공/완제품", Icons.Outlined.TakeoutDining, Color(0xFFB45309), Color(0xFFFFFBEB)),
+    CategoryMeta("BEVERAGE", "음료", Icons.Outlined.LocalCafe, Color(0xFF6D28D9), Color(0xFFF5F3FF)),
+    CategoryMeta("SAUCE", "양념/소스", Icons.Outlined.SoupKitchen, Color(0xFFC2410C), Color(0xFFFFF7ED)),
+    CategoryMeta("ETC", "기타", Icons.Outlined.Inventory2, Color(0xFF475569), Color(0xFFF1F5F9)),
 )
+
+private fun resolveLocationVector(loc: StorageLocationNode): ImageVector {
+    val name = loc.name
+    return when {
+        name.contains("냉동") -> Icons.Outlined.AcUnit
+        name.contains("냉장") -> Icons.Outlined.Kitchen
+        name.contains("야채") || name.contains("채소") || name.contains("신선") -> Icons.Outlined.Eco
+        name.contains("실온") || name.contains("팬트리") || name.contains("선반") -> Icons.Outlined.Inventory2
+        else -> Icons.Outlined.Folder
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,11 +217,17 @@ fun InventoryScreen(
     var showCategoryMenu by remember { mutableStateOf(false) }
     var showStatusMenu by remember { mutableStateOf(false) }
     var moveTargetItem by remember { mutableStateOf<FoodItem?>(null) }
+    var deleteTargetLocation by remember { mutableStateOf<StorageLocationNode?>(null) }
+    var discardTargetItem by remember { mutableStateOf<FoodItem?>(null) }
     var detailTargetItemId by remember { mutableStateOf<Long?>(null) }
     val detailTargetItem = remember(items, detailTargetItemId) {
         detailTargetItemId?.let { id -> items.find { it.id == id } }
     }
     val currentHouseholdName = households.find { it.id == currentHouseholdId }?.name ?: "우리집 냉장고"
+    val hasActiveFilters = selectedLocationId != null ||
+        selectedCategory != null ||
+        expiryFilter != ExpiryQuickFilter.ALL ||
+        searchQuery.isNotBlank()
 
     val totalCount = items.size
     val expiringCount = items.count {
@@ -243,15 +286,15 @@ fun InventoryScreen(
                     onClick = { showAddItemSheet = true },
                     containerColor = FreshKitchenColors.PrimaryTealDeep,
                     contentColor = Color.White,
-                    shape = RoundedCornerShape(999.dp),
+                    shape = FreshKitchenShapes.Pill,
                     icon = {
                         Icon(
-                            imageVector = Icons.Rounded.Add,
+                            imageVector = Icons.Outlined.Add,
                             contentDescription = null,
                         )
                     },
                     text = {
-                        Text("품목 등록", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("품목 등록", style = MaterialTheme.typography.labelLarge)
                     },
                 )
             }
@@ -264,140 +307,119 @@ fun InventoryScreen(
             contentPadding = PaddingValues(bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Stitch Top App Bar
+            // Unified Modern Top App Bar (Household Switcher + Tree Manager + Profile)
             item {
                 Column(modifier = Modifier.background(FreshKitchenColors.SurfaceWhite)) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Kitchen,
-                                contentDescription = null,
-                                tint = FreshKitchenColors.PrimaryTealDeep,
-                                modifier = Modifier.size(24.dp),
-                            )
-                            Text(
-                                text = "우리집 냉장고",
-                                fontSize = 19.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = FreshKitchenColors.TextPrimary,
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(FreshKitchenColors.PrimaryTealDeep)
-                                .clickable(onClick = onOpenProfile),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Person,
-                                contentDescription = "가족·알림 설정",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                    }
-                    HorizontalDivider(color = FreshKitchenColors.BorderSubtle.copy(alpha = 0.7f))
-                }
-            }
-
-            // Household Switcher Pill + Action Icons
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box {
-                        Surface(
-                            onClick = { if (households.size > 1) showHouseholdMenu = true },
-                            shape = RoundedCornerShape(999.dp),
-                            color = FreshKitchenColors.SurfaceMuted,
-                        ) {
+                        Box {
                             Row(
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                modifier = Modifier
+                                    .clip(FreshKitchenShapes.Control)
+                                    .clickable(enabled = households.size > 1) { showHouseholdMenu = true }
+                                    .padding(vertical = 4.dp, horizontal = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Home,
-                                    contentDescription = null,
-                                    tint = FreshKitchenColors.PrimaryTealDeep,
-                                    modifier = Modifier.size(18.dp),
-                                )
+                                Surface(
+                                    modifier = Modifier.size(32.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = FreshKitchenColors.PrimarySoft,
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Kitchen,
+                                            contentDescription = null,
+                                            tint = FreshKitchenColors.PrimaryTealDeep,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                }
                                 Text(
                                     text = currentHouseholdName,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleLarge,
                                     color = FreshKitchenColors.TextPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                                 if (households.size > 1) {
                                     Icon(
-                                        imageVector = Icons.Rounded.KeyboardArrowDown,
-                                        contentDescription = null,
+                                        imageVector = Icons.Outlined.KeyboardArrowDown,
+                                        contentDescription = "가구 전환",
                                         tint = FreshKitchenColors.TextMuted,
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }
                             }
+                            DropdownMenu(
+                                expanded = showHouseholdMenu,
+                                onDismissRequest = { showHouseholdMenu = false },
+                            ) {
+                                households.forEach { hh ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                text = if (hh.id == currentHouseholdId) "✓ ${hh.name}" else hh.name,
+                                                fontWeight = if (hh.id == currentHouseholdId) FontWeight.Bold else FontWeight.Normal,
+                                            )
+                                        },
+                                        onClick = {
+                                            showHouseholdMenu = false
+                                            if (hh.id != currentHouseholdId) {
+                                                onSwitchHousehold(hh.id)
+                                            }
+                                        },
+                                    )
+                                }
+                            }
                         }
-                        DropdownMenu(
-                            expanded = showHouseholdMenu,
-                            onDismissRequest = { showHouseholdMenu = false },
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            households.forEach { hh ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = if (hh.id == currentHouseholdId) "✓ ${hh.name}" else hh.name,
-                                            fontWeight = if (hh.id == currentHouseholdId) FontWeight.Bold else FontWeight.Normal,
-                                        )
-                                    },
-                                    onClick = {
-                                        showHouseholdMenu = false
-                                        if (hh.id != currentHouseholdId) {
-                                            onSwitchHousehold(hh.id)
-                                        }
-                                    },
+                            IconButton(
+                                onClick = { showTreeManager = !showTreeManager },
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(
+                                        if (showTreeManager) FreshKitchenColors.PrimarySoft else FreshKitchenColors.SurfaceMuted,
+                                    ),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Tune,
+                                    contentDescription = "보관 장소 관리",
+                                    tint = if (showTreeManager) FreshKitchenColors.PrimaryTealDeep else FreshKitchenColors.TextSecondary,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                            IconButton(
+                                onClick = onOpenProfile,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(FreshKitchenColors.PrimaryTealDeep),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Person,
+                                    contentDescription = "가족·알림 설정",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp),
                                 )
                             }
                         }
                     }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        IconButton(
-                            onClick = { showTreeManager = !showTreeManager },
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(
-                                    if (showTreeManager) FreshKitchenColors.PrimarySoft else Color.Transparent,
-                                ),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Tune,
-                                contentDescription = "장소 관리",
-                                tint = if (showTreeManager) FreshKitchenColors.PrimaryTealDeep else FreshKitchenColors.TextSecondary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                    }
+                    HorizontalDivider(color = FreshKitchenColors.BorderSubtle)
                 }
             }
 
-            // Expiry Summary Strip (3 stat cards)
+            // Compact Expiry Summary Strip (3 stat cards)
             item {
                 Row(
                     modifier = Modifier
@@ -409,7 +431,7 @@ fun InventoryScreen(
                         label = "보관 중",
                         count = totalCount,
                         icon = Icons.Outlined.Kitchen,
-                        bgColor = FreshKitchenColors.SurfaceMuted,
+                        bgColor = FreshKitchenColors.SurfaceWhite,
                         accentColor = FreshKitchenColors.TextPrimary,
                         iconTint = FreshKitchenColors.PrimaryTealDeep,
                         selected = expiryFilter == ExpiryQuickFilter.ALL,
@@ -436,7 +458,7 @@ fun InventoryScreen(
                     SummaryStatCard(
                         label = "만료됨",
                         count = expiredCount,
-                        icon = Icons.Rounded.PriorityHigh,
+                        icon = Icons.Outlined.PriorityHigh,
                         bgColor = FreshKitchenColors.ExpiredBg,
                         accentColor = FreshKitchenColors.ExpiredText,
                         iconTint = FreshKitchenColors.ExpiredText,
@@ -457,33 +479,21 @@ fun InventoryScreen(
             item {
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Folder,
-                                contentDescription = null,
-                                tint = FreshKitchenColors.PrimaryTealDeep,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Text(
-                                text = "보관 장소 둘러보기",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = FreshKitchenColors.TextPrimary,
-                            )
-                        }
+                        Text(
+                            text = "보관 장소",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = FreshKitchenColors.TextPrimary,
+                        )
                         Surface(
                             onClick = { includeSubLocations = !includeSubLocations },
-                            shape = RoundedCornerShape(999.dp),
+                            shape = FreshKitchenShapes.Pill,
                             color = if (includeSubLocations) {
                                 FreshKitchenColors.PrimarySoft
                             } else {
@@ -491,7 +501,7 @@ fun InventoryScreen(
                             },
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(5.dp),
                             ) {
@@ -504,9 +514,8 @@ fun InventoryScreen(
                                         ),
                                 )
                                 Text(
-                                    text = if (includeSubLocations) "하위 구역 포함 ON" else "하위 구역 포함 OFF",
+                                    text = if (includeSubLocations) "하위 구역 포함" else "현재 구역만",
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
                                     color = if (includeSubLocations) {
                                         FreshKitchenColors.PrimaryDark
                                     } else {
@@ -522,25 +531,9 @@ fun InventoryScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         item {
-                            Surface(
-                                onClick = { showTreeManager = !showTreeManager },
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (showTreeManager) FreshKitchenColors.PrimarySoft else FreshKitchenColors.SurfaceMuted,
-                                modifier = Modifier.size(38.dp),
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.AccountTree,
-                                        contentDescription = "트리 편집",
-                                        tint = if (showTreeManager) FreshKitchenColors.PrimaryTealDeep else FreshKitchenColors.TextSecondary,
-                                        modifier = Modifier.size(18.dp),
-                                    )
-                                }
-                            }
-                        }
-                        item {
                             LocationPillChip(
                                 label = "전체",
+                                leadingIcon = Icons.Outlined.Home,
                                 count = totalCount,
                                 selected = selectedLocationId == null,
                                 onClick = { selectedLocationId = null },
@@ -553,7 +546,8 @@ fun InventoryScreen(
                             val locCount = items.count { it.locationId in locIds }
                             val prefix = if (loc.depth > 0) "└ " else ""
                             LocationPillChip(
-                                label = "$prefix${loc.icon ?: "📁"} ${loc.name}",
+                                label = "$prefix${loc.name}",
+                                leadingIcon = resolveLocationVector(loc),
                                 count = if (loc.depth == 0) locCount else null,
                                 selected = selectedLocationId == loc.id,
                                 onClick = {
@@ -565,14 +559,32 @@ fun InventoryScreen(
                 }
             }
 
-            // Optional Tree Management Panel
-            if (showTreeManager) {
-                item {
+            // Collapsible Tree Management Panel
+            item {
+                AnimatedVisibility(
+                    visible = showTreeManager,
+                    enter = fadeIn(
+                        animationSpec = tween(
+                            durationMillis = FreshKitchenMotion.StandardMs,
+                            easing = FreshKitchenMotion.EnterEasing,
+                        ),
+                    ) + expandVertically(
+                        animationSpec = tween(
+                            durationMillis = FreshKitchenMotion.StandardMs,
+                            easing = FreshKitchenMotion.EnterEasing,
+                        ),
+                    ),
+                    exit = fadeOut(
+                        animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+                    ) + shrinkVertically(
+                        animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+                    ),
+                ) {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = FreshKitchenShapes.Card,
                         color = FreshKitchenColors.SurfaceWhite,
                         border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
                     ) {
@@ -586,15 +598,19 @@ fun InventoryScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
-                                    "보관 장소 트리 편집",
+                                    text = "보관 장소 트리 편집",
                                     style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
+                                    color = FreshKitchenColors.TextPrimary,
                                 )
                                 TextButton(onClick = {
                                     showAddLocationParentId = null
                                     showAddLocationDialog = true
                                 }) {
-                                    Text("+ 최상위 장소", color = FreshKitchenColors.PrimaryTealDeep, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        text = "+ 최상위 장소",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = FreshKitchenColors.PrimaryTealDeep,
+                                    )
                                 }
                             }
                             flatLocations.forEach { loc ->
@@ -605,20 +621,36 @@ fun InventoryScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text(
-                                        text = "${loc.icon ?: "📁"} ${loc.name}",
-                                        style = MaterialTheme.typography.bodyMedium,
+                                    Row(
                                         modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = resolveLocationVector(loc),
+                                            contentDescription = null,
+                                            tint = FreshKitchenColors.PrimaryTealDeep,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Text(
+                                            text = loc.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = FreshKitchenColors.TextPrimary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
                                     Row {
                                         TextButton(onClick = {
                                             showAddLocationParentId = loc.id
                                             showAddLocationDialog = true
-                                        }) { Text("+하위", fontSize = 12.sp) }
-                                        TextButton(onClick = { onDeleteLocation(loc.id) }) {
-                                            Text("삭제", color = FreshKitchenColors.ExpiredText, fontSize = 12.sp)
+                                        }) { Text("+하위", style = MaterialTheme.typography.labelMedium) }
+                                        TextButton(onClick = { deleteTargetLocation = loc }) {
+                                            Text(
+                                                text = "삭제",
+                                                style = MaterialTheme.typography.labelMedium,
+                                                color = FreshKitchenColors.ExpiredText,
+                                            )
                                         }
                                     }
                                 }
@@ -628,66 +660,66 @@ fun InventoryScreen(
                 }
             }
 
-            // Pill Search Bar & Filter Chips Row
+            // Clean Pill Search Bar & Filter Chips Row
             item {
                 Column(
                     modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    // Stitch Pill Search Field
-                    Row(
+                    Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp)
-                            .shadow(
-                                elevation = 2.dp,
-                                shape = RoundedCornerShape(999.dp),
-                                ambientColor = Color.Black.copy(alpha = 0.04f),
-                            )
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(FreshKitchenColors.SurfaceWhite)
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            .height(44.dp),
+                        shape = FreshKitchenShapes.Control,
+                        color = FreshKitchenColors.SurfaceWhite,
+                        border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Search,
-                            contentDescription = null,
-                            tint = FreshKitchenColors.TextMuted,
-                            modifier = Modifier.size(20.dp),
-                        )
-                        Box(modifier = Modifier.weight(1f)) {
-                            if (searchQuery.isEmpty()) {
-                                Text(
-                                    text = "품목명, 메모 검색...",
-                                    color = FreshKitchenColors.TextMuted,
-                                    fontSize = 14.sp,
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Search,
+                                contentDescription = null,
+                                tint = FreshKitchenColors.TextMuted,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Box(modifier = Modifier.weight(1f)) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "품목명, 메모 검색...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = FreshKitchenColors.TextMuted,
+                                    )
+                                }
+                                BasicTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    singleLine = true,
+                                    textStyle = TextStyle(
+                                        color = FreshKitchenColors.TextPrimary,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                    ),
+                                    cursorBrush = SolidColor(FreshKitchenColors.PrimaryTealDeep),
+                                    modifier = Modifier.fillMaxWidth(),
                                 )
                             }
-                            BasicTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                singleLine = true,
-                                textStyle = TextStyle(
-                                    color = FreshKitchenColors.TextPrimary,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                ),
-                                cursorBrush = SolidColor(FreshKitchenColors.PrimaryTealDeep),
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(
-                                onClick = { searchQuery = "" },
-                                modifier = Modifier.size(24.dp),
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = "검색어 지우기",
-                                    tint = FreshKitchenColors.TextMuted,
-                                    modifier = Modifier.size(16.dp),
-                                )
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { searchQuery = "" },
+                                    modifier = Modifier.size(24.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Close,
+                                        contentDescription = "검색어 지우기",
+                                        tint = FreshKitchenColors.TextMuted,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -701,8 +733,8 @@ fun InventoryScreen(
                         // Sort pill
                         Surface(
                             onClick = { sortByName = !sortByName },
-                            shape = RoundedCornerShape(999.dp),
-                            color = FreshKitchenColors.PrimaryMint,
+                            shape = FreshKitchenShapes.Pill,
+                            color = FreshKitchenColors.PrimarySoft,
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
@@ -710,7 +742,7 @@ fun InventoryScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.SwapVert,
+                                    imageVector = Icons.Outlined.SwapVert,
                                     contentDescription = null,
                                     tint = FreshKitchenColors.PrimaryDark,
                                     modifier = Modifier.size(15.dp),
@@ -718,7 +750,6 @@ fun InventoryScreen(
                                 Text(
                                     text = if (sortByName) "이름순" else "임박순",
                                     style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
                                     color = FreshKitchenColors.PrimaryDark,
                                 )
                             }
@@ -729,7 +760,7 @@ fun InventoryScreen(
                             val selectedCatLabel = CATEGORIES.find { it.code == selectedCategory }?.label ?: "카테고리"
                             Surface(
                                 onClick = { showCategoryMenu = true },
-                                shape = RoundedCornerShape(999.dp),
+                                shape = FreshKitchenShapes.Pill,
                                 color = if (selectedCategory != null) FreshKitchenColors.PrimarySoft else FreshKitchenColors.SurfaceWhite,
                                 border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
                             ) {
@@ -741,11 +772,10 @@ fun InventoryScreen(
                                     Text(
                                         text = selectedCatLabel,
                                         style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (selectedCategory != null) FontWeight.Bold else FontWeight.Medium,
                                         color = if (selectedCategory != null) FreshKitchenColors.PrimaryDark else FreshKitchenColors.TextPrimary,
                                     )
                                     Icon(
-                                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                                        imageVector = Icons.Outlined.KeyboardArrowDown,
                                         contentDescription = null,
                                         tint = FreshKitchenColors.TextMuted,
                                         modifier = Modifier.size(15.dp),
@@ -765,7 +795,15 @@ fun InventoryScreen(
                                 )
                                 CATEGORIES.forEach { cat ->
                                     DropdownMenuItem(
-                                        text = { Text("${cat.emoji} ${cat.label}") },
+                                        leadingIcon = {
+                                            Icon(
+                                                imageVector = cat.icon,
+                                                contentDescription = null,
+                                                tint = cat.iconTint,
+                                                modifier = Modifier.size(18.dp),
+                                            )
+                                        },
+                                        text = { Text(cat.label) },
                                         onClick = {
                                             selectedCategory = cat.code
                                             showCategoryMenu = false
@@ -779,7 +817,7 @@ fun InventoryScreen(
                         Box {
                             Surface(
                                 onClick = { showStatusMenu = true },
-                                shape = RoundedCornerShape(999.dp),
+                                shape = FreshKitchenShapes.Pill,
                                 color = if (expiryFilter != ExpiryQuickFilter.ALL) FreshKitchenColors.PrimarySoft else FreshKitchenColors.SurfaceWhite,
                                 border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
                             ) {
@@ -791,11 +829,10 @@ fun InventoryScreen(
                                     Text(
                                         text = expiryFilter.label,
                                         style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (expiryFilter != ExpiryQuickFilter.ALL) FontWeight.Bold else FontWeight.Medium,
                                         color = if (expiryFilter != ExpiryQuickFilter.ALL) FreshKitchenColors.PrimaryDark else FreshKitchenColors.TextPrimary,
                                     )
                                     Icon(
-                                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                                        imageVector = Icons.Outlined.KeyboardArrowDown,
                                         contentDescription = null,
                                         tint = FreshKitchenColors.TextMuted,
                                         modifier = Modifier.size(15.dp),
@@ -818,27 +855,29 @@ fun InventoryScreen(
                             }
                         }
 
-                        // Reset filters button
-                        Surface(
-                            onClick = {
-                                selectedLocationId = null
-                                selectedCategory = null
-                                expiryFilter = ExpiryQuickFilter.ALL
-                                searchQuery = ""
-                                sortByName = false
-                            },
-                            shape = CircleShape,
-                            color = FreshKitchenColors.SurfaceWhite,
-                            border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
-                            modifier = Modifier.size(32.dp),
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Refresh,
-                                    contentDescription = "필터 초기화",
-                                    tint = FreshKitchenColors.TextSecondary,
-                                    modifier = Modifier.size(16.dp),
-                                )
+                        // Reset filters button (shown cleanly when active or always reachable)
+                        if (hasActiveFilters || sortByName) {
+                            Surface(
+                                onClick = {
+                                    selectedLocationId = null
+                                    selectedCategory = null
+                                    expiryFilter = ExpiryQuickFilter.ALL
+                                    searchQuery = ""
+                                    sortByName = false
+                                },
+                                shape = CircleShape,
+                                color = FreshKitchenColors.SurfaceWhite,
+                                border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
+                                modifier = Modifier.size(32.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Refresh,
+                                        contentDescription = "필터 초기화",
+                                        tint = FreshKitchenColors.TextSecondary,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -852,24 +891,90 @@ fun InventoryScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = FreshKitchenShapes.Card,
                         color = FreshKitchenColors.SurfaceWhite,
                         border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(32.dp),
+                                .padding(horizontal = 24.dp, vertical = 32.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Text("🥬", fontSize = 36.sp)
-                            Spacer(Modifier.height(10.dp))
+                            Surface(
+                                modifier = Modifier.size(52.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                color = FreshKitchenColors.SurfaceMuted,
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = if (hasActiveFilters) Icons.Outlined.SearchOff else Icons.Outlined.Kitchen,
+                                        contentDescription = null,
+                                        tint = FreshKitchenColors.TextMuted,
+                                        modifier = Modifier.size(26.dp),
+                                    )
+                                }
+                            }
                             Text(
-                                "조건에 맞는 식재료가 없습니다.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
+                                text = if (hasActiveFilters) {
+                                    "조건에 맞는 식재료가 없어요"
+                                } else {
+                                    "아직 등록된 식재료가 없어요"
+                                },
+                                style = MaterialTheme.typography.titleMedium,
+                                color = FreshKitchenColors.TextPrimary,
+                            )
+                            Text(
+                                text = if (hasActiveFilters) {
+                                    "검색어나 필터를 초기화해 전체 보관 목록을 확인해보세요."
+                                } else {
+                                    "냉장고 속 식재료를 등록하면 유통기한 D-Day를 자동으로 챙겨드려요."
+                                },
+                                style = MaterialTheme.typography.bodySmall,
                                 color = FreshKitchenColors.TextMuted,
                             )
+                            Spacer(Modifier.height(4.dp))
+                            if (hasActiveFilters) {
+                                Button(
+                                    onClick = {
+                                        selectedLocationId = null
+                                        selectedCategory = null
+                                        expiryFilter = ExpiryQuickFilter.ALL
+                                        searchQuery = ""
+                                    },
+                                    shape = FreshKitchenShapes.Control,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = FreshKitchenColors.PrimaryTealDeep,
+                                        contentColor = Color.White,
+                                    ),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Refresh,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("필터 초기화", style = MaterialTheme.typography.labelLarge)
+                                }
+                            } else if (flatLocations.isNotEmpty()) {
+                                Button(
+                                    onClick = { showAddItemSheet = true },
+                                    shape = FreshKitchenShapes.Control,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = FreshKitchenColors.PrimaryTealDeep,
+                                        contentColor = Color.White,
+                                    ),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Add,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("첫 품목 등록하기", style = MaterialTheme.typography.labelLarge)
+                                }
+                            }
                         }
                     }
                 }
@@ -882,29 +987,31 @@ fun InventoryScreen(
                         onAdjustQuantity = onAdjustQuantity,
                         onMoveClick = { moveTargetItem = item },
                         onConsumeItem = { id -> detailTargetItemId = id },
-                        onDiscardItem = onDiscardItem,
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                        onDiscardItem = { discardTargetItem = item },
+                        modifier = Modifier
+                            .animateItem()
+                            .padding(horizontal = 16.dp),
                     )
                 }
             }
 
-            // Stitch Kitchen Tip Banner
+            // Kitchen Tip Banner
             if (expiringCount > 0 || expiredCount > 0) {
                 item {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(Color(0xFFE0F7F4))
+                            .clip(FreshKitchenShapes.Card)
+                            .background(FreshKitchenColors.TipBannerBg)
                             .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(38.dp)
-                                .clip(CircleShape)
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(FreshKitchenColors.PrimaryTealDeep),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -912,14 +1019,13 @@ fun InventoryScreen(
                                 imageVector = Icons.Outlined.Lightbulb,
                                 contentDescription = null,
                                 tint = Color.White,
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(18.dp),
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "오늘의 살림 팁",
                                 style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
                                 color = FreshKitchenColors.PrimaryDark,
                             )
                             Text(
@@ -940,14 +1046,14 @@ fun InventoryScreen(
         var locName by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddLocationDialog = false },
-            title = { Text("보관 장소 추가", fontWeight = FontWeight.Bold) },
+            title = { Text("보관 장소 추가", style = MaterialTheme.typography.titleMedium) },
             text = {
                 OutlinedTextField(
                     value = locName,
                     onValueChange = { locName = it },
                     label = { Text("장소 이름 (예: 야채칸, 1단 선반)") },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = FreshKitchenShapes.Control,
                 )
             },
             confirmButton = {
@@ -958,6 +1064,7 @@ fun InventoryScreen(
                             showAddLocationDialog = false
                         }
                     },
+                    shape = FreshKitchenShapes.Control,
                     colors = ButtonDefaults.buttonColors(containerColor = FreshKitchenColors.PrimaryTealDeep),
                 ) { Text("추가") }
             },
@@ -967,11 +1074,81 @@ fun InventoryScreen(
         )
     }
 
+    if (deleteTargetLocation != null) {
+        val locToDelete = deleteTargetLocation!!
+        AlertDialog(
+            onDismissRequest = { deleteTargetLocation = null },
+            title = { Text("보관 장소를 삭제할까요?", style = MaterialTheme.typography.titleMedium) },
+            text = {
+                Text(
+                    text = "'${locToDelete.name}' 장소를 삭제합니다. 하위 구역이나 보관 품목이 있으면 먼저 정리해야 할 수 있어요.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = FreshKitchenColors.TextSecondary,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteLocation(locToDelete.id)
+                        deleteTargetLocation = null
+                    },
+                    shape = FreshKitchenShapes.Control,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = FreshKitchenColors.ExpiredText,
+                        contentColor = Color.White,
+                    ),
+                ) { Text("삭제") }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTargetLocation = null }) {
+                    Text("취소", color = FreshKitchenColors.TextSecondary)
+                }
+            },
+        )
+    }
+
+    if (discardTargetItem != null) {
+        val target = discardTargetItem!!
+        AlertDialog(
+            onDismissRequest = { discardTargetItem = null },
+            title = { Text("식재료를 폐기할까요?", style = MaterialTheme.typography.titleMedium) },
+            text = {
+                Text(
+                    text = "'${target.name}' 품목을 폐기 처리하면 보관 목록에서 제거되고 변경 이력에 기록됩니다.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = FreshKitchenColors.TextSecondary,
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val id = target.id
+                        discardTargetItem = null
+                        if (detailTargetItemId == id) {
+                            detailTargetItemId = null
+                        }
+                        onDiscardItem(id)
+                    },
+                    shape = FreshKitchenShapes.Control,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = FreshKitchenColors.ExpiredText,
+                        contentColor = Color.White,
+                    ),
+                ) { Text("폐기") }
+            },
+            dismissButton = {
+                TextButton(onClick = { discardTargetItem = null }) {
+                    Text("취소", color = FreshKitchenColors.TextSecondary)
+                }
+            },
+        )
+    }
+
     if (moveTargetItem != null && flatLocations.isNotEmpty()) {
         val target = moveTargetItem!!
         AlertDialog(
             onDismissRequest = { moveTargetItem = null },
-            title = { Text("보관 장소 이동: ${target.name}", fontWeight = FontWeight.Bold) },
+            title = { Text("보관 장소 이동: ${target.name}", style = MaterialTheme.typography.titleMedium) },
             text = {
                 Column(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -980,7 +1157,7 @@ fun InventoryScreen(
                     flatLocations.forEach { loc ->
                         val isCurrent = loc.id == target.locationId
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = FreshKitchenShapes.Control,
                             color = if (isCurrent) FreshKitchenColors.PrimarySoft else FreshKitchenColors.SurfaceMuted,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -989,14 +1166,25 @@ fun InventoryScreen(
                                     moveTargetItem = null
                                 },
                         ) {
-                            Text(
-                                text = "${"  ".repeat(loc.depth)}${loc.icon ?: "📁"} ${loc.name}" +
-                                    if (isCurrent) " (현재)" else "",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isCurrent) FreshKitchenColors.PrimaryDark else FreshKitchenColors.TextPrimary,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .padding(start = (12 + loc.depth * 12).dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    imageVector = resolveLocationVector(loc),
+                                    contentDescription = null,
+                                    tint = if (isCurrent) FreshKitchenColors.PrimaryDark else FreshKitchenColors.TextMuted,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Text(
+                                    text = loc.name + if (isCurrent) " (현재)" else "",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isCurrent) FreshKitchenColors.PrimaryDark else FreshKitchenColors.TextPrimary,
+                                )
+                            }
                         }
                     }
                 }
@@ -1013,15 +1201,15 @@ fun InventoryScreen(
             onDismissRequest = { showAddItemSheet = false },
             sheetState = sheetState,
             containerColor = FreshKitchenColors.SurfaceWhite,
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            shape = FreshKitchenShapes.Sheet,
             dragHandle = {
                 Box(
                     modifier = Modifier
                         .padding(top = 12.dp, bottom = 4.dp)
                         .width(40.dp)
                         .height(4.dp)
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(Color(0xFFCBD5E1)),
+                        .clip(FreshKitchenShapes.Pill)
+                        .background(FreshKitchenColors.NeutralTrack),
                 )
             },
         ) {
@@ -1043,15 +1231,15 @@ fun InventoryScreen(
             onDismissRequest = { detailTargetItemId = null },
             sheetState = detailSheetState,
             containerColor = FreshKitchenColors.SurfaceWhite,
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            shape = FreshKitchenShapes.Sheet,
             dragHandle = {
                 Box(
                     modifier = Modifier
                         .padding(top = 12.dp, bottom = 4.dp)
                         .width(40.dp)
                         .height(4.dp)
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(Color(0xFFCBD5E1)),
+                        .clip(FreshKitchenShapes.Pill)
+                        .background(FreshKitchenColors.NeutralTrack),
                 )
             },
         ) {
@@ -1070,9 +1258,8 @@ fun InventoryScreen(
                     detailTargetItemId = null
                     onConsumeItem(id, null, null, null)
                 },
-                onDiscardItem = { id ->
-                    detailTargetItemId = null
-                    onDiscardItem(id)
+                onDiscardItem = { _ ->
+                    discardTargetItem = detailTargetItem
                 },
             )
         }
@@ -1091,20 +1278,21 @@ private fun SummaryStatCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) FreshKitchenColors.PrimaryTealDeep else FreshKitchenColors.BorderSubtle,
+        animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+        label = "stat_border",
+    )
     Surface(
         onClick = onClick,
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        shape = FreshKitchenShapes.Card,
         color = bgColor,
-        border = if (selected) {
-            BorderStroke(1.5.dp, FreshKitchenColors.PrimaryTealDeep)
-        } else {
-            null
-        },
+        border = BorderStroke(if (selected) 1.5.dp else 1.dp, borderColor),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1114,7 +1302,6 @@ private fun SummaryStatCard(
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
                     color = FreshKitchenColors.TextSecondary,
                     maxLines = 1,
                 )
@@ -1127,10 +1314,10 @@ private fun SummaryStatCard(
             }
             Text(
                 text = buildAnnotatedString {
-                    withStyle(SpanStyle(fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = accentColor)) {
+                    withStyle(SpanStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold, color = accentColor)) {
                         append(count.toString())
                     }
-                    withStyle(SpanStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = accentColor.copy(alpha = 0.8f))) {
+                    withStyle(SpanStyle(fontSize = 12.sp, fontWeight = FontWeight.Medium, color = accentColor.copy(alpha = 0.75f))) {
                         append(" 개")
                     }
                 },
@@ -1142,40 +1329,60 @@ private fun SummaryStatCard(
 @Composable
 private fun LocationPillChip(
     label: String,
+    leadingIcon: ImageVector? = null,
+    leadingIconTint: Color? = null,
     count: Int? = null,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) FreshKitchenColors.PrimaryTealDeep else FreshKitchenColors.SurfaceWhite,
+        animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+        label = "chip_bg",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) FreshKitchenColors.PrimaryTealDeep else FreshKitchenColors.BorderSubtle,
+        animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+        label = "chip_border",
+    )
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) Color.White else FreshKitchenColors.TextPrimary,
+        animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+        label = "chip_content",
+    )
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(999.dp),
-        color = if (selected) FreshKitchenColors.PrimaryTealDeep else FreshKitchenColors.SurfaceWhite,
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (selected) FreshKitchenColors.PrimaryTealDeep else FreshKitchenColors.BorderSubtle,
-        ),
+        shape = FreshKitchenShapes.Pill,
+        color = containerColor,
+        border = BorderStroke(width = 1.dp, color = borderColor),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = if (selected) Color.White else (leadingIconTint ?: FreshKitchenColors.TextMuted),
+                    modifier = Modifier.size(15.dp),
+                )
+            }
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                color = if (selected) Color.White else FreshKitchenColors.TextPrimary,
+                color = contentColor,
                 maxLines = 1,
             )
             if (count != null) {
                 Surface(
-                    shape = RoundedCornerShape(999.dp),
+                    shape = FreshKitchenShapes.Pill,
                     color = if (selected) Color.White.copy(alpha = 0.22f) else FreshKitchenColors.SurfaceMuted,
                 ) {
                     Text(
                         text = count.toString(),
                         style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
                         color = if (selected) Color.White else FreshKitchenColors.TextMuted,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
                     )
@@ -1257,191 +1464,65 @@ private fun FreshItemCard(
     val badgeBg = badgeStyle.bgColor
     val badgeText = badgeStyle.textColor
 
-    val topAccentColor = when (item.expiryState) {
-        ExpiryState.EXPIRED -> FreshKitchenColors.ExpiredText
-        ExpiryState.TODAY -> FreshKitchenColors.TodayText
-        ExpiryState.EXPIRING_SOON -> Color(0xFFFACC15)
-        else -> Color.Transparent
-    }
-
     val qtyDisplay = formatQuantity(item.quantity)
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 4.dp,
-                shape = RoundedCornerShape(20.dp),
-                ambientColor = Color.Black.copy(alpha = 0.05f),
-                spotColor = Color.Black.copy(alpha = 0.05f),
-            )
-            .clip(RoundedCornerShape(20.dp))
+            .clip(FreshKitchenShapes.Card)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = FreshKitchenShapes.Card,
         color = FreshKitchenColors.SurfaceWhite,
-        border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle.copy(alpha = 0.6f)),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (item.expiryState == ExpiryState.EXPIRED) {
+                FreshKitchenColors.ExpiredText.copy(alpha = 0.25f)
+            } else {
+                FreshKitchenColors.BorderSubtle
+            },
+        ),
     ) {
-        Column {
-            if (topAccentColor != Color.Transparent) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.5.dp)
-                        .background(topAccentColor),
-                )
-            }
-
-            Column(modifier = Modifier.padding(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Surface(
+                    modifier = Modifier.size(46.dp),
+                    shape = FreshKitchenShapes.Control,
+                    color = catMeta.tintBg,
+                    border = BorderStroke(1.dp, catMeta.iconTint.copy(alpha = 0.12f)),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(catMeta.tintBg),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                    Box(contentAlignment = Alignment.Center) {
                         if (!item.thumbImageUrl.isNullOrBlank()) {
                             RemoteWebpImage(
                                 imageUrl = item.thumbImageUrl,
                                 contentDescription = item.name,
                                 modifier = Modifier.fillMaxSize(),
-                                fallback = { Text(catMeta.emoji, fontSize = 23.sp) },
+                                fallback = {
+                                    Icon(
+                                        imageVector = catMeta.icon,
+                                        contentDescription = catMeta.label,
+                                        tint = catMeta.iconTint,
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                },
                             )
                         } else {
-                            Text(catMeta.emoji, fontSize = 23.sp)
-                        }
-                    }
-
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                Text(
-                                    text = item.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = FreshKitchenColors.TextPrimary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                if (item.expiryState == ExpiryState.EXPIRED) {
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = FreshKitchenColors.ExpiredBg,
-                                    ) {
-                                        Text(
-                                            text = "확인필요",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = FreshKitchenColors.ExpiredText,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        )
-                                    }
-                                }
-                            }
-                            Spacer(Modifier.width(6.dp))
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = badgeBg,
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                ) {
-                                    if (item.expiryState == ExpiryState.EXPIRED) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.WarningAmber,
-                                            contentDescription = null,
-                                            tint = badgeText,
-                                            modifier = Modifier.size(12.dp),
-                                        )
-                                    } else if (item.expiryState == ExpiryState.NONE) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.AllInclusive,
-                                            contentDescription = null,
-                                            tint = badgeText,
-                                            modifier = Modifier.size(12.dp),
-                                        )
-                                    }
-                                    Text(
-                                        text = dDayText,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = badgeText,
-                                        maxLines = 1,
-                                    )
-                                }
-                            }
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
                             Icon(
-                                imageVector = Icons.Rounded.Place,
-                                contentDescription = null,
-                                tint = FreshKitchenColors.TextMuted,
-                                modifier = Modifier.size(13.dp),
-                            )
-                            Text(
-                                text = item.locationPath,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = FreshKitchenColors.TextMuted,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-
-                        if (item.expiryState == ExpiryState.EXPIRED) {
-                            Text(
-                                text = "상태를 확인하고 우선 소비하거나 정리하세요.",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = FreshKitchenColors.ExpiredText,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        } else if (!item.memo.isNullOrBlank()) {
-                            Text(
-                                text = item.memo,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = FreshKitchenColors.TextMuted,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                imageVector = catMeta.icon,
+                                contentDescription = catMeta.label,
+                                tint = catMeta.iconTint,
+                                modifier = Modifier.size(22.dp),
                             )
                         }
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
-
-                // Remaining Quantity ProgressBar
-                val safeBaseline = baselineQuantity.coerceAtLeast(item.quantity).coerceAtLeast(0.01)
-                val remainingRatio = (item.quantity / safeBaseline).toFloat().coerceIn(0f, 1f)
-                val remainingPercent = (remainingRatio * 100f).roundToInt()
-                val remainingBarColor = when {
-                    remainingPercent <= 25 -> FreshKitchenColors.ExpiredText
-                    remainingPercent <= 50 -> FreshKitchenColors.ExpiringText
-                    else -> FreshKitchenColors.PrimaryTealDeep
-                }
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1449,118 +1530,216 @@ private fun FreshItemCard(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            text = "남은 양",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
-                            color = FreshKitchenColors.TextMuted,
+                            text = item.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = FreshKitchenColors.TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = badgeBg,
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                            ) {
+                                if (item.expiryState == ExpiryState.EXPIRED) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.WarningAmber,
+                                        contentDescription = null,
+                                        tint = badgeText,
+                                        modifier = Modifier.size(12.dp),
+                                    )
+                                } else if (item.expiryState == ExpiryState.NONE) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.AllInclusive,
+                                        contentDescription = null,
+                                        tint = badgeText,
+                                        modifier = Modifier.size(12.dp),
+                                    )
+                                }
+                                Text(
+                                    text = dDayText,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = badgeText,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Place,
+                            contentDescription = null,
+                            tint = FreshKitchenColors.TextMuted,
+                            modifier = Modifier.size(13.dp),
                         )
                         Text(
-                            text = "$qtyDisplay / ${formatQuantity(safeBaseline)} ${item.unit} · $remainingPercent%",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = remainingBarColor,
+                            text = item.locationPath,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = FreshKitchenColors.TextMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(FreshKitchenColors.SurfaceMuted),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(remainingRatio)
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(remainingBarColor),
+
+                    if (!item.memo.isNullOrBlank()) {
+                        Text(
+                            text = item.memo,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = FreshKitchenColors.TextMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
+            }
 
-                Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
-                // Single-line Quick Actions Row
+            // Animated Remaining Quantity ProgressBar
+            val safeBaseline = baselineQuantity.coerceAtLeast(item.quantity).coerceAtLeast(0.01)
+            val remainingRatio = (item.quantity / safeBaseline).toFloat().coerceIn(0f, 1f)
+            val animatedRatio by animateFloatAsState(
+                targetValue = remainingRatio,
+                animationSpec = tween(
+                    durationMillis = FreshKitchenMotion.StandardMs,
+                    easing = FreshKitchenMotion.EnterEasing,
+                ),
+                label = "remaining_ratio",
+            )
+            val remainingPercent = (remainingRatio * 100f).roundToInt()
+            val remainingBarColor = when {
+                remainingPercent <= 25 -> FreshKitchenColors.ExpiredText
+                remainingPercent <= 50 -> FreshKitchenColors.ExpiringText
+                else -> FreshKitchenColors.PrimaryTealDeep
+            }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Compact Pill Stepper
-                    Row(
+                    Text(
+                        text = "남은 양",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = FreshKitchenColors.TextMuted,
+                    )
+                    Text(
+                        text = "$qtyDisplay / ${formatQuantity(safeBaseline)} ${item.unit} · $remainingPercent%",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = remainingBarColor,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(5.dp)
+                        .clip(FreshKitchenShapes.Pill)
+                        .background(FreshKitchenColors.SurfaceMuted),
+                ) {
+                    Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(FreshKitchenColors.SurfaceMuted)
-                            .padding(horizontal = 4.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onAdjustQuantity(item, -1.0) },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "−",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                color = FreshKitchenColors.TextPrimary,
-                            )
-                        }
-                        Text(
-                            text = "$qtyDisplay ${item.unit}",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = FreshKitchenColors.TextPrimary,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.padding(horizontal = 6.dp),
-                        )
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { onAdjustQuantity(item, 1.0) },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "+",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp,
-                                color = FreshKitchenColors.TextPrimary,
-                            )
-                        }
-                    }
+                            .fillMaxWidth(animatedRatio)
+                            .height(5.dp)
+                            .clip(FreshKitchenShapes.Pill)
+                            .background(remainingBarColor),
+                    )
+                }
+            }
 
-                    // Compact Action Pills (Move / Discard / Consume)
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+            Spacer(Modifier.height(12.dp))
+
+            // Single-line Quick Actions Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Compact Pill Stepper
+                Row(
+                    modifier = Modifier
+                        .clip(FreshKitchenShapes.Control)
+                        .background(FreshKitchenColors.SurfaceMuted)
+                        .padding(horizontal = 4.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onAdjustQuantity(item, -1.0) },
+                        contentAlignment = Alignment.Center,
                     ) {
-                        ActionPillButton(
-                            label = "이동",
-                            icon = Icons.AutoMirrored.Rounded.DriveFileMove,
-                            bgColor = FreshKitchenColors.SurfaceMuted,
-                            contentColor = FreshKitchenColors.TextPrimary,
-                            onClick = onMoveClick,
-                        )
-                        val isExpired = item.expiryState == ExpiryState.EXPIRED
-                        ActionPillButton(
-                            label = "폐기",
-                            icon = Icons.Outlined.DeleteOutline,
-                            bgColor = if (isExpired) FreshKitchenColors.ExpiredText else FreshKitchenColors.ExpiredBg,
-                            contentColor = if (isExpired) Color.White else FreshKitchenColors.ExpiredText,
-                            onClick = { onDiscardItem(item.id) },
-                        )
-                        ActionPillButton(
-                            label = "소비",
-                            icon = Icons.Rounded.Check,
-                            bgColor = FreshKitchenColors.PrimaryTealDeep,
-                            contentColor = Color.White,
-                            onClick = { onConsumeItem(item.id) },
+                        Text(
+                            text = "−",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = FreshKitchenColors.TextPrimary,
                         )
                     }
+                    Text(
+                        text = "$qtyDisplay ${item.unit}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = FreshKitchenColors.TextPrimary,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.padding(horizontal = 6.dp),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onAdjustQuantity(item, 1.0) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "+",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = FreshKitchenColors.TextPrimary,
+                        )
+                    }
+                }
+
+                // Compact Action Pills (Move / Discard / Consume)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ActionPillButton(
+                        label = "이동",
+                        icon = Icons.AutoMirrored.Outlined.DriveFileMove,
+                        bgColor = FreshKitchenColors.SurfaceMuted,
+                        contentColor = FreshKitchenColors.TextPrimary,
+                        onClick = onMoveClick,
+                    )
+                    val isExpired = item.expiryState == ExpiryState.EXPIRED
+                    ActionPillButton(
+                        label = "폐기",
+                        icon = Icons.Outlined.DeleteOutline,
+                        bgColor = if (isExpired) FreshKitchenColors.ExpiredText else FreshKitchenColors.ExpiredBg,
+                        contentColor = if (isExpired) Color.White else FreshKitchenColors.ExpiredText,
+                        onClick = { onDiscardItem(item.id) },
+                    )
+                    ActionPillButton(
+                        label = "소비",
+                        icon = Icons.Outlined.Check,
+                        bgColor = FreshKitchenColors.PrimaryTealDeep,
+                        contentColor = Color.White,
+                        onClick = { onConsumeItem(item.id) },
+                    )
                 }
             }
         }
@@ -2007,9 +2186,11 @@ private fun AddItemSheetContent(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text(
-                            text = selectedLoc.icon ?: "📁",
-                            fontSize = 15.sp,
+                        Icon(
+                            imageVector = resolveLocationVector(selectedLoc),
+                            contentDescription = null,
+                            tint = FreshKitchenColors.PrimaryTealDeep,
+                            modifier = Modifier.size(16.dp),
                         )
                         Surface(
                             shape = RoundedCornerShape(8.dp),
@@ -2018,7 +2199,6 @@ private fun AddItemSheetContent(
                             Text(
                                 text = selectedLoc.name,
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
                                 color = FreshKitchenColors.PrimaryDark,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                             )
@@ -2058,7 +2238,7 @@ private fun AddItemSheetContent(
                                         ) {
                                             if (isSel) {
                                                 Icon(
-                                                    imageVector = Icons.Rounded.Check,
+                                                    imageVector = Icons.Outlined.Check,
                                                     contentDescription = null,
                                                     tint = Color.White,
                                                     modifier = Modifier.size(14.dp),
@@ -2068,7 +2248,6 @@ private fun AddItemSheetContent(
                                             Text(
                                                 text = loc.name,
                                                 style = MaterialTheme.typography.labelMedium,
-                                                fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
                                                 color = if (isSel) Color.White else FreshKitchenColors.TextPrimary,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
@@ -2091,7 +2270,6 @@ private fun AddItemSheetContent(
             Text(
                 text = "카테고리",
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
                 color = FreshKitchenColors.TextPrimary,
             )
             Row(
@@ -2100,7 +2278,9 @@ private fun AddItemSheetContent(
             ) {
                 CATEGORIES.forEach { cat ->
                     LocationPillChip(
-                        label = "${cat.emoji} ${cat.label}",
+                        label = cat.label,
+                        leadingIcon = cat.icon,
+                        leadingIconTint = cat.iconTint,
                         selected = category == cat.code,
                         onClick = { category = cat.code },
                     )
@@ -2505,14 +2685,20 @@ private fun FoodItemDetailSheetContent(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(catMeta.tintBg),
-                contentAlignment = Alignment.Center,
+            Surface(
+                modifier = Modifier.size(52.dp),
+                shape = FreshKitchenShapes.Card,
+                color = catMeta.tintBg,
+                border = BorderStroke(1.dp, catMeta.iconTint.copy(alpha = 0.14f)),
             ) {
-                Text(catMeta.emoji, fontSize = 26.sp)
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = catMeta.icon,
+                        contentDescription = catMeta.label,
+                        tint = catMeta.iconTint,
+                        modifier = Modifier.size(26.dp),
+                    )
+                }
             }
 
             Column(
@@ -2530,7 +2716,6 @@ private fun FoodItemDetailSheetContent(
                         Text(
                             text = catMeta.label,
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
                             color = FreshKitchenColors.PrimaryTealDeep,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         )
@@ -2542,7 +2727,6 @@ private fun FoodItemDetailSheetContent(
                         Text(
                             text = badgeStyle.text,
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
                             color = badgeStyle.textColor,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         )
@@ -2551,7 +2735,6 @@ private fun FoodItemDetailSheetContent(
                 Text(
                     text = item.name,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
                     color = FreshKitchenColors.TextPrimary,
                 )
             }
@@ -2564,7 +2747,7 @@ private fun FoodItemDetailSheetContent(
                     .background(FreshKitchenColors.SurfaceMuted),
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Close,
+                    imageVector = Icons.Outlined.Close,
                     contentDescription = "닫기",
                     tint = FreshKitchenColors.TextMuted,
                     modifier = Modifier.size(18.dp),
@@ -2578,7 +2761,7 @@ private fun FoodItemDetailSheetContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(190.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = FreshKitchenShapes.Card,
                 color = FreshKitchenColors.SurfaceMuted,
                 border = BorderStroke(1.dp, FreshKitchenColors.BorderSubtle),
             ) {
@@ -2591,7 +2774,12 @@ private fun FoodItemDetailSheetContent(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center,
                         ) {
-                            Text(catMeta.emoji, fontSize = 40.sp)
+                            Icon(
+                                imageVector = catMeta.icon,
+                                contentDescription = catMeta.label,
+                                tint = catMeta.iconTint,
+                                modifier = Modifier.size(40.dp),
+                            )
                         }
                     },
                 )

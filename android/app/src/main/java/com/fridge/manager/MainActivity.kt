@@ -4,6 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +20,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Kitchen
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.Kitchen
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -34,7 +45,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.fridge.manager.core.notification.NotificationHelper
 import com.fridge.manager.domain.model.ExpiryState
@@ -43,6 +53,7 @@ import com.fridge.manager.ui.screens.AuthOnboardingScreen
 import com.fridge.manager.ui.screens.FamilyAndSettingsScreen
 import com.fridge.manager.ui.screens.InventoryScreen
 import com.fridge.manager.ui.theme.FreshKitchenColors
+import com.fridge.manager.ui.theme.FreshKitchenMotion
 import com.fridge.manager.ui.theme.FridgeTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -90,125 +101,168 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (token.isNullOrBlank() || householdId == null) {
-                    Scaffold(
-                        containerColor = FreshKitchenColors.CanvasBackground,
-                        snackbarHost = { SnackbarHost(snackbarHostState) },
-                    ) { padding ->
-                        Box(Modifier.padding(padding)) {
-                            AuthOnboardingScreen(
-                                isLoggedIn = !token.isNullOrBlank(),
-                                isLoggingIn = isLoginLoading,
-                                onLogin = vm::login,
-                                onRegister = vm::register,
-                                onDevLogin = vm::devLogin,
-                                onCreateHousehold = vm::createHousehold,
-                                onJoinHousehold = vm::joinHousehold,
-                            )
-                        }
-                    }
-                } else {
-                    Scaffold(
-                        containerColor = FreshKitchenColors.CanvasBackground,
-                        snackbarHost = { SnackbarHost(snackbarHostState) },
-                        bottomBar = {
-                            Column {
-                                HorizontalDivider(thickness = 1.dp, color = FreshKitchenColors.BorderSubtle)
-                                NavigationBar(
-                                    containerColor = FreshKitchenColors.SurfaceWhite,
-                                    tonalElevation = 0.dp,
-                                ) {
-                                    val itemColors = NavigationBarItemDefaults.colors(
-                                        indicatorColor = FreshKitchenColors.PrimaryMint,
-                                        selectedIconColor = FreshKitchenColors.PrimaryDark,
-                                        selectedTextColor = FreshKitchenColors.PrimaryDark,
-                                        unselectedIconColor = FreshKitchenColors.TextMuted,
-                                        unselectedTextColor = FreshKitchenColors.TextMuted,
-                                    )
-                                    NavigationBarItem(
-                                        selected = selectedTab == 0,
-                                        onClick = { selectedTab = 0 },
-                                        icon = {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Kitchen,
-                                                contentDescription = "재고·장소",
-                                            )
-                                        },
-                                        label = {
-                                            Text(
-                                                "재고·장소",
-                                                fontSize = 12.sp,
-                                                fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
-                                            )
-                                        },
-                                        colors = itemColors,
-                                    )
-                                    NavigationBarItem(
-                                        selected = selectedTab == 1,
-                                        onClick = { selectedTab = 1 },
-                                        icon = {
-                                            Box {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Group,
-                                                    contentDescription = "가족·알림",
-                                                )
-                                                if (hasUrgentAlerts) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .align(Alignment.TopEnd)
-                                                            .offset(x = 3.dp, y = (-2).dp)
-                                                            .size(8.dp)
-                                                            .clip(CircleShape)
-                                                            .background(FreshKitchenColors.ExpiredText),
-                                                    )
-                                                }
-                                            }
-                                        },
-                                        label = {
-                                            Text(
-                                                "가족·알림",
-                                                fontSize = 12.sp,
-                                                fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
-                                            )
-                                        },
-                                        colors = itemColors,
-                                    )
-                                }
+                val isOnboarding = token.isNullOrBlank() || householdId == null
+                Crossfade(
+                    targetState = isOnboarding,
+                    animationSpec = tween(
+                        durationMillis = FreshKitchenMotion.StandardMs,
+                        easing = FreshKitchenMotion.EnterEasing,
+                    ),
+                    label = "root_screen_transition",
+                ) { showOnboarding ->
+                    if (showOnboarding) {
+                        Scaffold(
+                            containerColor = FreshKitchenColors.CanvasBackground,
+                            snackbarHost = { SnackbarHost(snackbarHostState) },
+                        ) { padding ->
+                            Box(Modifier.padding(padding)) {
+                                AuthOnboardingScreen(
+                                    isLoggedIn = !token.isNullOrBlank(),
+                                    isLoggingIn = isLoginLoading,
+                                    onLogin = vm::login,
+                                    onRegister = vm::register,
+                                    onDevLogin = vm::devLogin,
+                                    onCreateHousehold = vm::createHousehold,
+                                    onJoinHousehold = vm::joinHousehold,
+                                )
                             }
-                        },
-                    ) { padding ->
-                        Box(Modifier.padding(padding)) {
-                            if (selectedTab == 0) {
-                                InventoryScreen(
-                                    households = households,
-                                    currentHouseholdId = householdId,
-                                    locationsTree = locationsTree,
-                                    flatLocations = flatLocations,
-                                    items = activeItems,
-                                    expiringOnlyInitial = openExpiring,
-                                    onSwitchHousehold = vm::switchHousehold,
-                                    onCreateLocation = vm::createLocation,
-                                    onDeleteLocation = vm::deleteLocation,
-                                    onCreateItem = { req, photos -> vm.createItem(req, photos) },
-                                    onAdjustQuantity = vm::adjustQuantity,
-                                    onMoveItem = vm::moveItem,
-                                    onConsumeItem = { id, amount, remainingQuantity, note ->
-                                        vm.consumeItem(id, amount, remainingQuantity, note)
+                        }
+                    } else {
+                        Scaffold(
+                            containerColor = FreshKitchenColors.CanvasBackground,
+                            snackbarHost = { SnackbarHost(snackbarHostState) },
+                            bottomBar = {
+                                Column {
+                                    HorizontalDivider(thickness = 1.dp, color = FreshKitchenColors.BorderSubtle)
+                                    NavigationBar(
+                                        containerColor = FreshKitchenColors.SurfaceWhite,
+                                        tonalElevation = 0.dp,
+                                    ) {
+                                        val itemColors = NavigationBarItemDefaults.colors(
+                                            indicatorColor = FreshKitchenColors.PrimarySoft,
+                                            selectedIconColor = FreshKitchenColors.PrimaryTealDeep,
+                                            selectedTextColor = FreshKitchenColors.PrimaryTealDeep,
+                                            unselectedIconColor = FreshKitchenColors.TextMuted,
+                                            unselectedTextColor = FreshKitchenColors.TextMuted,
+                                        )
+                                        NavigationBarItem(
+                                            selected = selectedTab == 0,
+                                            onClick = { selectedTab = 0 },
+                                            icon = {
+                                                Icon(
+                                                    imageVector = if (selectedTab == 0) {
+                                                        Icons.Rounded.Kitchen
+                                                    } else {
+                                                        Icons.Outlined.Kitchen
+                                                    },
+                                                    contentDescription = "재고·장소",
+                                                )
+                                            },
+                                            label = {
+                                                Text(
+                                                    text = "재고·장소",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Medium,
+                                                )
+                                            },
+                                            colors = itemColors,
+                                        )
+                                        NavigationBarItem(
+                                            selected = selectedTab == 1,
+                                            onClick = { selectedTab = 1 },
+                                            icon = {
+                                                Box {
+                                                    Icon(
+                                                        imageVector = if (selectedTab == 1) {
+                                                            Icons.Rounded.Group
+                                                        } else {
+                                                            Icons.Outlined.Group
+                                                        },
+                                                        contentDescription = "가족·알림",
+                                                    )
+                                                    if (hasUrgentAlerts) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .align(Alignment.TopEnd)
+                                                                .offset(x = 3.dp, y = (-2).dp)
+                                                                .size(7.dp)
+                                                                .clip(CircleShape)
+                                                                .background(FreshKitchenColors.ExpiredText),
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            label = {
+                                                Text(
+                                                    text = "가족·알림",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
+                                                )
+                                            },
+                                            colors = itemColors,
+                                        )
+                                    }
+                                }
+                            },
+                        ) { padding ->
+                            Box(Modifier.padding(padding)) {
+                                AnimatedContent(
+                                    targetState = selectedTab,
+                                    transitionSpec = {
+                                        val direction = if (targetState > initialState) 1 else -1
+                                        (fadeIn(
+                                            animationSpec = tween(
+                                                durationMillis = FreshKitchenMotion.StandardMs,
+                                                easing = FreshKitchenMotion.EnterEasing,
+                                            ),
+                                        ) + slideInHorizontally(
+                                            animationSpec = tween(
+                                                durationMillis = FreshKitchenMotion.StandardMs,
+                                                easing = FreshKitchenMotion.EnterEasing,
+                                            ),
+                                            initialOffsetX = { fullWidth -> direction * (fullWidth / 16) },
+                                        )) togetherWith (fadeOut(
+                                            animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+                                        ) + slideOutHorizontally(
+                                            animationSpec = tween(durationMillis = FreshKitchenMotion.FastMs),
+                                            targetOffsetX = { fullWidth -> -direction * (fullWidth / 16) },
+                                        ))
                                     },
-                                    onDiscardItem = vm::discardItem,
-                                    onOpenProfile = { selectedTab = 1 },
-                                )
-                            } else {
-                                FamilyAndSettingsScreen(
-                                    nickname = nickname,
-                                    householdName = households.find { it.id == householdId }?.name ?: "행복한 우리집 냉장고",
-                                    inviteCode = inviteCode,
-                                    activities = activities,
-                                    notificationSettings = notificationSettings,
-                                    onGenerateInvite = vm::generateInviteCode,
-                                    onUpdateNotificationSettings = vm::updateNotificationSettings,
-                                    onLogout = vm::logout,
-                                )
+                                    label = "bottom_tab_transition",
+                                ) { tab ->
+                                    if (tab == 0) {
+                                        InventoryScreen(
+                                            households = households,
+                                            currentHouseholdId = householdId,
+                                            locationsTree = locationsTree,
+                                            flatLocations = flatLocations,
+                                            items = activeItems,
+                                            expiringOnlyInitial = openExpiring,
+                                            onSwitchHousehold = vm::switchHousehold,
+                                            onCreateLocation = vm::createLocation,
+                                            onDeleteLocation = vm::deleteLocation,
+                                            onCreateItem = { req, photos -> vm.createItem(req, photos) },
+                                            onAdjustQuantity = vm::adjustQuantity,
+                                            onMoveItem = vm::moveItem,
+                                            onConsumeItem = { id, amount, remainingQuantity, note ->
+                                                vm.consumeItem(id, amount, remainingQuantity, note)
+                                            },
+                                            onDiscardItem = vm::discardItem,
+                                            onOpenProfile = { selectedTab = 1 },
+                                        )
+                                    } else {
+                                        FamilyAndSettingsScreen(
+                                            nickname = nickname,
+                                            householdName = households.find { it.id == householdId }?.name ?: "행복한 우리집 냉장고",
+                                            inviteCode = inviteCode,
+                                            activities = activities,
+                                            notificationSettings = notificationSettings,
+                                            onGenerateInvite = vm::generateInviteCode,
+                                            onUpdateNotificationSettings = vm::updateNotificationSettings,
+                                            onLogout = vm::logout,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
