@@ -108,6 +108,7 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - [x] **Plan 02 — 빈 상태 CTA 및 파괴적 액션 확인 다이얼로그**: `InventoryScreen` 빈 상태 단일 CTA(`필터 초기화`/`품목 등록하기`) 추가, 장소 삭제·품목 폐기·로그아웃 확인 `AlertDialog` 적용
 - [x] **Plan 03 — 재고 화면 상단 다이어트 및 품목 카드 계층 현대화**: 상단 앱바·가구 스위처 통합, 중복 트리 편집 버튼 제거, `FreshItemCard` 중복 경고 배지·상단 바 정리 및 여백·가독성 개선
 - [x] **Plan 04 — 자연스러운 화면 전환, 마이크로 인터랙션 및 고급 벡터 아이콘 통일**: `FreshKitchenMotion`(150~200ms `ease-out`) 기준 적용(인증↔메인 `Crossfade`, 하단 탭·로그인 세그먼트 `AnimatedContent`, `LazyColumn` `animateItem()`, 남은 양 바·칩·접힘 패널 전환) 및 이모지·클립아트 아이콘을 정제된 `Icons.Outlined.*` 벡터 아이콘으로 전면 교체
+- [x] **어댑티브 앱 아이콘 및 알림 아이콘 적용**: `mipmap-anydpi-v26` 어댑티브 아이콘(`#00685F` 배경 + 미니멀 냉장고 벡터 + Android 13+ 모노크롬 레이어) 및 `NotificationHelper` 전용 알림 아이콘(`ic_notification_fridge`) 적용
 
 ---
 

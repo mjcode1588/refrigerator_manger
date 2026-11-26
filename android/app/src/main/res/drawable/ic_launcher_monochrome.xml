@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Monochrome themed icon (Android 13+) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,29 L68,29 A5,5 0 0 1 73,34 L73,48.5 L35,48.5 L35,34 A5,5 0 0 1 40,29 Z M41,37.5 L41,44.5 A1.5,1.5 0 0 0 44,44.5 L44,37.5 A1.5,1.5 0 0 0 41,37.5 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M35,51 L73,51 L73,74 A5,5 0 0 1 68,79 L40,79 A5,5 0 0 1 35,74 Z M41,56 L41,67 A1.5,1.5 0 0 0 44,67 L44,56 A1.5,1.5 0 0 0 41,56 Z" />
+</vector>
