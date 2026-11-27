@@ -1,8 +1,8 @@
 # 03. 데이터베이스 설계 (DB 벤더 중립 ERD 및 호환성 가이드)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-25  
-> **관련 문서**: [전체 시스템 아키텍처](./01-system-architecture.md), [보관 장소 및 재고 명세](../03-features/02-storage-and-inventory.md)
+> **최종 수정일**: 2026-11-26  
+> **관련 문서**: [전체 시스템 아키텍처](./01-system-architecture.md), [보관 장소 및 재고 명세](../03-features/02-storage-and-inventory.md), [장보기 리스트 명세](../03-features/04-shopping-list.md)
 
 ---
 
@@ -29,6 +29,8 @@ erDiagram
     storage_locations ||--o{ storage_locations : "parent_of (tree)"
     storage_locations ||--o{ items : "stores"
     households ||--o{ items : "owns"
+    households ||--o{ shopping_items : "plans"
+    users ||--o{ shopping_items : "purchases"
     households ||--o{ activity_logs : "records"
     users ||--o{ activity_logs : "performs"
 
@@ -130,6 +132,23 @@ erDiagram
         TEXT detail_json
         TIMESTAMPTZ created_at
     }
+
+    shopping_items {
+        BIGINT id PK
+        BIGINT household_id FK
+        VARCHAR name
+        VARCHAR category
+        DECIMAL quantity
+        VARCHAR unit
+        VARCHAR memo
+        BOOLEAN is_purchased
+        BIGINT purchased_by FK
+        TIMESTAMPTZ purchased_at
+        BIGINT created_by FK
+        BIGINT updated_by FK
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
 ```
 
 ---
@@ -173,7 +192,12 @@ erDiagram
 - `items.expiry_type`: `USE_BY` | `BEST_BEFORE` | `NONE`
 - `items.status`: `ACTIVE` | `CONSUMED` | `DISCARDED`
 - `items.detail_image_key` / `items.thumb_image_key` (Nullable): DB에 이미지 바이너리를 저장하지 않고, OCI Object Storage(또는 `/data/media`) 오브젝트 키만 보관합니다. `CONSUMED`/`DISCARDED` 전환 후 30일이 지난 품목의 `detail_image_key`는 배치/TTL 정책에 의해 정리(`NULL` 초기화 및 오브젝트 삭제)됩니다.
-- `activity_logs`: `entity_type`(`ITEM`|`LOCATION`|`MEMBER`), `action_type`(`CREATED`|`UPDATED`|`MOVED`|`CONSUMED`|`DISCARDED`|`DELETED`|`JOINED`), `detail_json` 저장.
+- `activity_logs`: `entity_type`(`ITEM`|`LOCATION`|`MEMBER`|`SHOPPING_ITEM`), `action_type`(`CREATED`|`UPDATED`|`MOVED`|`CONSUMED`|`DISCARDED`|`DELETED`|`JOINED`|`PURCHASED`|`UNPURCHASED`|`CLEARED`), `detail_json` 저장.
+
+### 4.5 `shopping_items` (가구 공유 장보기 리스트)
+- 가구당 단일 공유 장보기 리스트 항목을 저장합니다.
+- `is_purchased`: 구매 완료 여부(기본 `false`).
+- `purchased_by` / `purchased_at`: 누군가 구매 완료 체크 시 구매자 `users.id`와 구매 시각(UTC)을 기록하여 다른 가족이 중복 구매하지 않도록 표시합니다. 구매 취소 시 `NULL`로 초기화됩니다.
 
 ---
 
@@ -184,6 +208,7 @@ erDiagram
 | `storage_locations` | `(household_id, parent_id, sort_order)` | 가구별 트리 탐색 및 정렬 최적화 |
 | `items` | `(household_id, status, expiry_date)` | 임박/만료 품목 조회 및 WorkManager 동기화 |
 | `items` | `(household_id, location_id, status)` | 특정 보관 장소 내 재고 목록 조회 |
+| `shopping_items` | `(household_id, is_purchased, created_at)` | 장보기 리스트 미구매/구매완료 분리 정렬 조회 |
 | `activity_logs` | `(household_id, created_at)` | 가구별 최신 변경 이력 조회 |
 
 ---
@@ -194,3 +219,4 @@ erDiagram
 |---|---|---|
 | 2026-11-21 | `items` 테이블에 외부 스토리지 연동용 `detail_image_key`, `thumb_image_key` 컬럼 추가 (이미지 바이너리 DB 미저장 및 TTL 정리 정책 반영) | `docs/02-architecture/03-database-erd.md` |
 | 2026-11-25 | `users` 테이블에 가족 전용 자체 인증 컬럼(`username`, `password_hash`, `failed_login_attempts`, `locked_until`) 추가 | `docs/02-architecture/03-database-erd.md` |
+| 2026-11-26 | `shopping_items` 테이블 및 `(household_id, is_purchased, created_at)` 인덱스 추가 (가구 공유 장보기 리스트 및 중복 구매 방지용 구매자·시각 기록) | `docs/02-architecture/03-database-erd.md` |

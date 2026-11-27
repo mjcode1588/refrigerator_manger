@@ -8,6 +8,8 @@ import com.fridge.manager.core.datastore.NotificationSettings
 import com.fridge.manager.core.datastore.TokenStorage
 import com.fridge.manager.core.media.CompressedItemPhotos
 import com.fridge.manager.core.network.CreateItemRequest
+import com.fridge.manager.core.network.CreateShoppingItemRequest
+import com.fridge.manager.core.network.UpdateShoppingItemRequest
 import com.fridge.manager.core.notification.ExpiryCheckWorker
 import com.fridge.manager.data.repository.AuthApiException
 import com.fridge.manager.data.repository.FridgeRepository
@@ -15,6 +17,7 @@ import com.fridge.manager.data.repository.ServerUnavailableException
 import com.fridge.manager.domain.model.ActivityLogItem
 import com.fridge.manager.domain.model.FoodItem
 import com.fridge.manager.domain.model.HouseholdInfo
+import com.fridge.manager.domain.model.ShoppingItem
 import com.fridge.manager.domain.model.StorageLocationNode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -70,6 +73,9 @@ class MainViewModel @Inject constructor(
 
     private val _activities = MutableStateFlow<List<ActivityLogItem>>(emptyList())
     val activities: StateFlow<List<ActivityLogItem>> = _activities.asStateFlow()
+
+    private val _shoppingItems = MutableStateFlow<List<ShoppingItem>>(emptyList())
+    val shoppingItems: StateFlow<List<ShoppingItem>> = _shoppingItems.asStateFlow()
 
     private val _inviteCode = MutableStateFlow<String?>(null)
     val inviteCode: StateFlow<String?> = _inviteCode.asStateFlow()
@@ -165,6 +171,7 @@ class MainViewModel @Inject constructor(
             repository.syncLocations(hhId)
             repository.syncItems(hhId)
             _activities.value = repository.getActivities(hhId)
+            _shoppingItems.value = repository.getShoppingItems(hhId)
         }.onFailure { _message.value = "동기화 실패 (오프라인 캐시 표시 중)" }
     }
 
@@ -280,10 +287,105 @@ class MainViewModel @Inject constructor(
         _message.value = "알림 설정을 저장했습니다."
     }
 
+    fun refreshShoppingItems() = viewModelScope.launch {
+        val hhId = tokenStorage.getCurrentHouseholdId() ?: return@launch
+        runCatching {
+            _shoppingItems.value = repository.getShoppingItems(hhId)
+        }.onFailure { _message.value = it.message ?: "장보기 목록을 불러오지 못했습니다." }
+    }
+
+    fun createShoppingItem(
+        name: String,
+        category: String,
+        quantity: Double,
+        unit: String,
+        memo: String?,
+    ) = viewModelScope.launch {
+        val hhId = tokenStorage.getCurrentHouseholdId() ?: return@launch
+        runCatching {
+            repository.createShoppingItem(
+                hhId,
+                CreateShoppingItemRequest(
+                    name = name.trim(),
+                    category = category,
+                    quantity = quantity,
+                    unit = unit.trim().ifEmpty { "개" },
+                    memo = memo?.trim()?.takeIf { it.isNotEmpty() },
+                ),
+            )
+            _shoppingItems.value = repository.getShoppingItems(hhId)
+            _activities.value = repository.getActivities(hhId)
+        }.onFailure { _message.value = it.message ?: "장보기 품목 추가 실패" }
+    }
+
+    fun toggleShoppingItemPurchased(item: ShoppingItem) = viewModelScope.launch {
+        val hhId = tokenStorage.getCurrentHouseholdId() ?: return@launch
+        val nextPurchased = !item.isPurchased
+        runCatching {
+            repository.updateShoppingItem(
+                hhId,
+                item.id,
+                UpdateShoppingItemRequest(isPurchased = nextPurchased),
+            )
+            _shoppingItems.value = repository.getShoppingItems(hhId)
+            _activities.value = repository.getActivities(hhId)
+        }.onFailure { _message.value = it.message ?: "구매 상태 변경 실패" }
+    }
+
+    fun updateShoppingItem(
+        itemId: Long,
+        name: String,
+        category: String,
+        quantity: Double,
+        unit: String,
+        memo: String?,
+    ) = viewModelScope.launch {
+        val hhId = tokenStorage.getCurrentHouseholdId() ?: return@launch
+        val normalizedMemo = memo?.trim()?.takeIf { it.isNotEmpty() }
+        runCatching {
+            repository.updateShoppingItem(
+                hhId,
+                itemId,
+                UpdateShoppingItemRequest(
+                    name = name.trim(),
+                    category = category,
+                    quantity = quantity,
+                    unit = unit.trim().ifEmpty { "개" },
+                    memo = normalizedMemo,
+                    clearMemo = normalizedMemo == null,
+                ),
+            )
+            _shoppingItems.value = repository.getShoppingItems(hhId)
+            _activities.value = repository.getActivities(hhId)
+        }.onFailure { _message.value = it.message ?: "장보기 품목 수정 실패" }
+    }
+
+    fun deleteShoppingItem(itemId: Long) = viewModelScope.launch {
+        val hhId = tokenStorage.getCurrentHouseholdId() ?: return@launch
+        runCatching {
+            repository.deleteShoppingItem(hhId, itemId)
+            _shoppingItems.value = repository.getShoppingItems(hhId)
+            _activities.value = repository.getActivities(hhId)
+        }.onFailure { _message.value = it.message ?: "장보기 품목 삭제 실패" }
+    }
+
+    fun clearPurchasedShoppingItems() = viewModelScope.launch {
+        val hhId = tokenStorage.getCurrentHouseholdId() ?: return@launch
+        runCatching {
+            val count = repository.clearPurchasedShoppingItems(hhId)
+            _shoppingItems.value = repository.getShoppingItems(hhId)
+            _activities.value = repository.getActivities(hhId)
+            if (count > 0) {
+                _message.value = "구매 완료 항목 ${count}개를 정리했습니다."
+            }
+        }.onFailure { _message.value = it.message ?: "구매 완료 정리 실패" }
+    }
+
     fun logout() = viewModelScope.launch {
         repository.logout()
         ExpiryCheckWorker.cancel(appContext)
         _households.value = emptyList()
         _activities.value = emptyList()
+        _shoppingItems.value = emptyList()
     }
 }

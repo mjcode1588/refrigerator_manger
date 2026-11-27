@@ -55,3 +55,20 @@ data class ActivityLogItem(
     val summaryName: String?,
     val createdAt: String,
 )
+
+data class ShoppingItem(
+    val id: Long,
+    val householdId: Long,
+    val name: String,
+    val category: String,
+    val quantity: Double,
+    val unit: String,
+    val memo: String?,
+    val isPurchased: Boolean,
+    val purchasedBy: Long?,
+    val purchasedByNickname: String?,
+    val purchasedAt: String?,
+    val createdBy: Long,
+    val createdAt: String,
+    val updatedAt: String,
+)

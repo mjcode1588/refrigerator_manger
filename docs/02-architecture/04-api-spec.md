@@ -1,8 +1,8 @@
 # 04. REST API 명세 (API Specification)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-25  
-> **관련 문서**: [DB ERD](./03-database-erd.md), [인증 및 가구 공유](../03-features/01-auth-and-household.md), [보관 장소 및 재고](../03-features/02-storage-and-inventory.md)
+> **최종 수정일**: 2026-11-26  
+> **관련 문서**: [DB ERD](./03-database-erd.md), [인증 및 가구 공유](../03-features/01-auth-and-household.md), [보관 장소 및 재고](../03-features/02-storage-and-inventory.md), [장보기 리스트](../03-features/04-shopping-list.md)
 
 ---
 
@@ -84,6 +84,15 @@
 |---|---|---|---|
 | `GET` | `/households/{household_id}/activities` | 가구 내 재고/장소/구성원 변경 이력 커서(Cursor) 기반 페이지네이션 조회 | `MEMBER`+ |
 
+### 2.7 장보기 리스트 (`shopping-items`)
+| Method | Endpoint | 설명 | 권한 |
+|---|---|---|---|
+| `GET` | `/households/{household_id}/shopping-items` | 가구 공유 장보기 리스트 조회 (미구매 상단 최신순 + 구매 완료 하단 최근 구매순, `purchased_by_nickname` 포함) | `MEMBER`+ |
+| `POST` | `/households/{household_id}/shopping-items` | 장보기 품목 추가 (`201 Created`) | `MEMBER`+ |
+| `PATCH` | `/households/{household_id}/shopping-items/{shopping_item_id}` | 장보기 품목 정보 수정 및 `is_purchased` 구매 완료/취소 토글 (`purchased_by`, `purchased_at` 자동 기록/초기화) | `MEMBER`+ |
+| `DELETE` | `/households/{household_id}/shopping-items/{shopping_item_id}` | 장보기 품목 개별 삭제 (`204 No Content`) | `MEMBER`+ |
+| `POST` | `/households/{household_id}/shopping-items/clear-purchased` | 구매 완료된 항목 일괄 비우기 (`deleted_count` 반환) | `MEMBER`+ |
+
 ---
 
 ## 3. 주요 요청/응답 예시
@@ -153,3 +162,4 @@
 | 2026-11-21 | 보안 하드닝 규격 반영 — `/health` DB 내부 에러 문자열(`detail`) 미노출, `/auth/*`·`/households/join` Rate Limiting(`429`), `/auth/refresh` 탈취 감지, `/auth/logout` 토큰 소유권 검증, `/households/join` 원자적 사용 횟수 차감 명세 추가 | `docs/02-architecture/04-api-spec.md` |
 | 2026-11-22 | 백엔드 구현 반영 — 오류 코드 RATE_LIMITED(429), FORBIDDEN(403, 타인 refresh token 로그아웃), /health 503 응답에서 detail 제거 | server/app/core/config.py, server/app/core/rate_limit.py, server/app/main.py, server/app/api/routers/auth.py, server/app/api/routers/households.py, server/Caddyfile, server/entrypoint.sh, server/tests/test_security_hardening.py |
 | 2026-11-25 | 소셜 로그인(`/auth/social/google`, `/auth/social/kakao`) 제거 및 가족 전용 자체 인증 엔드포인트(`POST /auth/register`, `POST /auth/login`) 및 에러 코드 명세 추가 | `docs/02-architecture/04-api-spec.md` |
+| 2026-11-26 | 가구 공유 장보기 리스트 엔드포인트(`GET/POST/PATCH/DELETE /households/{household_id}/shopping-items`, `POST .../clear-purchased`) 추가 | `docs/02-architecture/04-api-spec.md` |

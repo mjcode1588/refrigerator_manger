@@ -128,4 +128,33 @@ interface ApiService {
         @Path("householdId") householdId: Long,
         @Query("limit") limit: Int = 20,
     ): ActivityListDto
+
+    @GET("households/{householdId}/shopping-items")
+    suspend fun getShoppingItems(
+        @Path("householdId") householdId: Long,
+    ): List<ShoppingItemDto>
+
+    @POST("households/{householdId}/shopping-items")
+    suspend fun createShoppingItem(
+        @Path("householdId") householdId: Long,
+        @Body body: CreateShoppingItemRequest,
+    ): ShoppingItemDto
+
+    @PATCH("households/{householdId}/shopping-items/{shoppingItemId}")
+    suspend fun updateShoppingItem(
+        @Path("householdId") householdId: Long,
+        @Path("shoppingItemId") shoppingItemId: Long,
+        @Body body: UpdateShoppingItemRequest,
+    ): ShoppingItemDto
+
+    @DELETE("households/{householdId}/shopping-items/{shoppingItemId}")
+    suspend fun deleteShoppingItem(
+        @Path("householdId") householdId: Long,
+        @Path("shoppingItemId") shoppingItemId: Long,
+    ): Response<Unit>
+
+    @POST("households/{householdId}/shopping-items/clear-purchased")
+    suspend fun clearPurchasedShoppingItems(
+        @Path("householdId") householdId: Long,
+    ): ClearPurchasedResponseDto
 }

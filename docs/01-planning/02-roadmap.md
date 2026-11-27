@@ -1,7 +1,7 @@
 # 02. 개발 로드맵 (Development Roadmap)
 
 > **상태**: 초안 (Draft)  
-> **최종 수정일**: 2026-11-25  
+> **최종 수정일**: 2026-11-26  
 > **관련 문서**: [프로젝트 개요](./01-project-overview.md), [OCI Always Free 인프라 설계](../02-architecture/02-oci-always-free-infra.md), [UI/UX 디자인 지침](../04-guides/05-ui-design-guidelines.md)
 
 ---
@@ -110,6 +110,12 @@ Android 네이티브 앱 개발 전에 핵심 도메인 로직과 사용자 흐�
 - [x] **Plan 04 — 자연스러운 화면 전환, 마이크로 인터랙션 및 고급 벡터 아이콘 통일**: `FreshKitchenMotion`(150~200ms `ease-out`) 기준 적용(인증↔메인 `Crossfade`, 하단 탭·로그인 세그먼트 `AnimatedContent`, `LazyColumn` `animateItem()`, 남은 양 바·칩·접힘 패널 전환) 및 이모지·클립아트 아이콘을 정제된 `Icons.Outlined.*` 벡터 아이콘으로 전면 교체
 - [x] **어댑티브 앱 아이콘 및 알림 아이콘 적용**: `mipmap-anydpi-v26` 어댑티브 아이콘(`#00685F` 배경 + 미니멀 냉장고 벡터 + Android 13+ 모노크롬 레이어) 및 `NotificationHelper` 전용 알림 아이콘(`ic_notification_fridge`) 적용
 
+### Phase 6: 가구 공유 장보기 리스트 (중복 구매 방지)
+가구 구성원이 장보기 리스트를 공유하고, 이미 누군가 구매한 품목에 취소선·구매자·구매 시각을 표시하여 하단에 유지함으로써 중복 구매를 방지합니다.
+- [x] **설계 문서 업데이트**: `04-shopping-list.md` 신설 및 `03-database-erd.md`, `04-api-spec.md`, `02-roadmap.md`, `docs/README.md` 갱신
+- [x] **FastAPI 백엔드(`server/`) 구현**: `ShoppingItem` 모델 및 Alembic 마이그레이션(`0005_add_shopping_items`), `/households/{id}/shopping-items` CRUD·구매 토글·완료 비우기 API, `activity_logs` 연동 및 `pytest`·`ruff` 검증
+- [x] **Android(`android/`) 구현**: `ApiService`·`Dtos`·`DomainModels`·`FridgeRepository`·`MainViewModel` 장보기 상태 연동, 하단 `장보기` 탭 및 `ShoppingListScreen` (`Fresh Kitchen Material` 준수, 미구매/구매완료 분리, 취소선·구매자 배지, 추가/수정 바텀시트, 완료 비우기 확인 다이얼로그)
+
 ---
 
 ## 3. 단계 완료 기준 (Definition of Done)
@@ -137,3 +143,4 @@ uff 통과). Android APK 하드닝은 미착수.
 - **2026-11-25**: **Phase 5.2 Android Release APK 자동 서명 및 네이버 MYBOX 배포 구축 완료** — `android/app/build.gradle.kts` `signingConfigs` 및 CI 버전/URL 주입 지원, `scripts/upload_to_mybox.py`(네이버 MYBOX Open API 2단계 업로드 및 폴더 자동 생성) + `scripts/tests/test_upload_to_mybox.py`(4건 통과), `.github/workflows/deploy-android-apk.yml`(테스트 → Release 서명 빌드 → `apksigner verify` → Artifact/MYBOX 업로드), `.gitignore` 키스토어 차단 및 `02-android-setup.md` 가이드 반영. Android `testDebugUnitTest`·`assembleRelease` 및 YAML 검증 통과.
 - **2026-11-25**: **Phase 5.2 기본 APK 배포 대상을 OCI 서버(`myfridges.duckdns.org`)로 전환** — `NAVER_MY_BOX` PAT 180일 만료 제약을 해소하기 위해 `deploy-android-apk.yml`의 기본 배포를 `OCI_SSH_KEY` 기반 SCP/SSH 배포로 전환하고 네이버 MYBOX 업로드는 선택적 미러(`continue-on-error: true`)로 조정. `server/compose.prod.yml`(`./releases:/srv/releases:ro`), `server/Caddyfile`(`/releases/{$APK_DOWNLOAD_PATH:apk}/*` 정적 호스팅), `server/.env.example`(`APK_DOWNLOAD_PATH`), `.gitignore`(`server/releases/`) 및 가이드 문서 반영.
 - **2026-11-25**: **Phase 5.3 Android UI 현대화 및 디자인 시스템 정합성 개선 계획 등록** — `ui-skills`(`create-design-md`, `improve-ui`, `baseline-ui`) 기반으로 `android/DESIGN.md` 작성·검증(`@google/design.md lint/export` 0 errors, 0 warnings) 및 `design-plans/01~04`(타이포/토큰, 빈 상태/확인 다이얼로그, 상단/카드 밀도, 화면 전환/모션) 실행 계획서 작성.
+- **2026-11-26**: **Phase 6 가구 공유 장보기 리스트 구현 완료** — `docs/03-features/04-shopping-list.md`·ERD·API 스펙·로드맵 반영 후 `server/`(`ShoppingItem`, Alembic `0005_add_shopping_items`, `/households/{id}/shopping-items` CRUD·구매 토글·완료 비우기, `pytest` 21건·`ruff` 통과) 및 `android/`(`ShoppingListScreen`, 하단 `장보기` 탭, 취소선·구매자 닉네임·구매 시각 배지) 구현 완료.

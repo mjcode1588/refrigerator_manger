@@ -13,6 +13,7 @@ import com.fridge.manager.core.network.RefreshRequest
 import com.fridge.manager.core.network.CreateHouseholdRequest
 import com.fridge.manager.core.network.CreateItemRequest
 import com.fridge.manager.core.network.CreateLocationRequest
+import com.fridge.manager.core.network.CreateShoppingItemRequest
 import com.fridge.manager.core.network.DevLoginRequest
 import com.fridge.manager.core.network.HealthResponseDto
 import com.fridge.manager.core.network.ItemDto
@@ -21,16 +22,19 @@ import com.fridge.manager.core.network.LocationNodeDto
 import com.fridge.manager.core.network.LoginRequest
 import com.fridge.manager.core.network.PhotoUploadUrlRequest
 import com.fridge.manager.core.network.RegisterRequest
+import com.fridge.manager.core.network.ShoppingItemDto
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
 import java.net.URI
 import com.fridge.manager.core.network.UpdateItemRequest
+import com.fridge.manager.core.network.UpdateShoppingItemRequest
 import com.fridge.manager.core.database.AppDatabase
 import com.fridge.manager.core.datastore.TokenStorage
 import com.fridge.manager.domain.model.ActivityLogItem
 import com.fridge.manager.domain.model.FoodItem
 import com.fridge.manager.domain.model.HouseholdInfo
+import com.fridge.manager.domain.model.ShoppingItem
 import com.fridge.manager.domain.model.StorageLocationNode
 import com.fridge.manager.domain.usecase.BuildLocationTreeUseCase
 import com.fridge.manager.domain.usecase.CalculateDDayUseCase
@@ -403,4 +407,48 @@ class FridgeRepository @Inject constructor(
         }
         return if (rawUrl.startsWith("/")) "$origin$rawUrl" else "$origin/$rawUrl"
     }
+
+    suspend fun getShoppingItems(householdId: Long): List<ShoppingItem> {
+        return apiService.getShoppingItems(householdId).map { it.toDomain() }
+    }
+
+    suspend fun createShoppingItem(
+        householdId: Long,
+        request: CreateShoppingItemRequest,
+    ): ShoppingItem {
+        return apiService.createShoppingItem(householdId, request).toDomain()
+    }
+
+    suspend fun updateShoppingItem(
+        householdId: Long,
+        shoppingItemId: Long,
+        request: UpdateShoppingItemRequest,
+    ): ShoppingItem {
+        return apiService.updateShoppingItem(householdId, shoppingItemId, request).toDomain()
+    }
+
+    suspend fun deleteShoppingItem(householdId: Long, shoppingItemId: Long) {
+        apiService.deleteShoppingItem(householdId, shoppingItemId)
+    }
+
+    suspend fun clearPurchasedShoppingItems(householdId: Long): Int {
+        return apiService.clearPurchasedShoppingItems(householdId).deletedCount
+    }
+
+    private fun ShoppingItemDto.toDomain() = ShoppingItem(
+        id = id,
+        householdId = householdId,
+        name = name,
+        category = category,
+        quantity = quantity,
+        unit = unit,
+        memo = memo,
+        isPurchased = isPurchased,
+        purchasedBy = purchasedBy,
+        purchasedByNickname = purchasedByNickname,
+        purchasedAt = purchasedAt,
+        createdBy = createdBy,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
 }

@@ -22,8 +22,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Kitchen
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.Kitchen
+import androidx.compose.material.icons.rounded.ShoppingCart
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -52,6 +54,7 @@ import com.fridge.manager.ui.main.MainViewModel
 import com.fridge.manager.ui.screens.AuthOnboardingScreen
 import com.fridge.manager.ui.screens.FamilyAndSettingsScreen
 import com.fridge.manager.ui.screens.InventoryScreen
+import com.fridge.manager.ui.screens.ShoppingListScreen
 import com.fridge.manager.ui.theme.FreshKitchenColors
 import com.fridge.manager.ui.theme.FreshKitchenMotion
 import com.fridge.manager.ui.theme.FridgeTheme
@@ -75,6 +78,7 @@ class MainActivity : ComponentActivity() {
                 val flatLocations by vm.flatLocations.collectAsState()
                 val activeItems by vm.activeItems.collectAsState()
                 val activities by vm.activities.collectAsState()
+                val shoppingItems by vm.shoppingItems.collectAsState()
                 val inviteCode by vm.inviteCode.collectAsState()
                 val notificationSettings by vm.notificationSettings.collectAsState()
                 val message by vm.message.collectAsState()
@@ -87,6 +91,7 @@ class MainActivity : ComponentActivity() {
                         it.expiryState == ExpiryState.TODAY ||
                         it.expiryState == ExpiryState.EXPIRING_SOON
                 }
+                val hasPendingShopping = shoppingItems.any { !it.isPurchased }
 
                 LaunchedEffect(message) {
                     message?.let {
@@ -174,6 +179,40 @@ class MainActivity : ComponentActivity() {
                                                 Box {
                                                     Icon(
                                                         imageVector = if (selectedTab == 1) {
+                                                            Icons.Rounded.ShoppingCart
+                                                        } else {
+                                                            Icons.Outlined.ShoppingCart
+                                                        },
+                                                        contentDescription = "장보기",
+                                                    )
+                                                    if (hasPendingShopping) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .align(Alignment.TopEnd)
+                                                                .offset(x = 3.dp, y = (-2).dp)
+                                                                .size(7.dp)
+                                                                .clip(CircleShape)
+                                                                .background(FreshKitchenColors.PrimaryTealDeep),
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            label = {
+                                                Text(
+                                                    text = "장보기",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
+                                                )
+                                            },
+                                            colors = itemColors,
+                                        )
+                                        NavigationBarItem(
+                                            selected = selectedTab == 2,
+                                            onClick = { selectedTab = 2 },
+                                            icon = {
+                                                Box {
+                                                    Icon(
+                                                        imageVector = if (selectedTab == 2) {
                                                             Icons.Rounded.Group
                                                         } else {
                                                             Icons.Outlined.Group
@@ -196,7 +235,7 @@ class MainActivity : ComponentActivity() {
                                                 Text(
                                                     text = "가족·알림",
                                                     style = MaterialTheme.typography.labelMedium,
-                                                    fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Medium,
+                                                    fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Medium,
                                                 )
                                             },
                                             colors = itemColors,
@@ -230,8 +269,8 @@ class MainActivity : ComponentActivity() {
                                     },
                                     label = "bottom_tab_transition",
                                 ) { tab ->
-                                    if (tab == 0) {
-                                        InventoryScreen(
+                                    when (tab) {
+                                        0 -> InventoryScreen(
                                             households = households,
                                             currentHouseholdId = householdId,
                                             locationsTree = locationsTree,
@@ -248,10 +287,19 @@ class MainActivity : ComponentActivity() {
                                                 vm.consumeItem(id, amount, remainingQuantity, note)
                                             },
                                             onDiscardItem = vm::discardItem,
-                                            onOpenProfile = { selectedTab = 1 },
+                                            onOpenProfile = { selectedTab = 2 },
                                         )
-                                    } else {
-                                        FamilyAndSettingsScreen(
+                                        1 -> ShoppingListScreen(
+                                            householdName = households.find { it.id == householdId }?.name ?: "우리집",
+                                            items = shoppingItems,
+                                            onRefresh = vm::refreshShoppingItems,
+                                            onTogglePurchased = vm::toggleShoppingItemPurchased,
+                                            onCreateItem = vm::createShoppingItem,
+                                            onUpdateItem = vm::updateShoppingItem,
+                                            onDeleteItem = vm::deleteShoppingItem,
+                                            onClearPurchased = vm::clearPurchasedShoppingItems,
+                                        )
+                                        else -> FamilyAndSettingsScreen(
                                             nickname = nickname,
                                             householdName = households.find { it.id == householdId }?.name ?: "행복한 우리집 냉장고",
                                             inviteCode = inviteCode,

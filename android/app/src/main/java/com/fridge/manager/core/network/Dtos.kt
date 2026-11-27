@@ -233,3 +233,46 @@ data class HealthResponseDto(
     @SerialName("maintenance_message") val maintenanceMessage: String? = null,
     @SerialName("min_android_version_code") val minAndroidVersionCode: Int = 1,
 )
+
+@Serializable
+data class CreateShoppingItemRequest(
+    val name: String,
+    val category: String = "ETC",
+    val quantity: Double = 1.0,
+    val unit: String = "개",
+    val memo: String? = null,
+)
+
+@Serializable
+data class UpdateShoppingItemRequest(
+    val name: String? = null,
+    val category: String? = null,
+    val quantity: Double? = null,
+    val unit: String? = null,
+    val memo: String? = null,
+    @SerialName("clear_memo") val clearMemo: Boolean = false,
+    @SerialName("is_purchased") val isPurchased: Boolean? = null,
+)
+
+@Serializable
+data class ShoppingItemDto(
+    val id: Long,
+    @SerialName("household_id") val householdId: Long,
+    val name: String,
+    val category: String,
+    val quantity: Double,
+    val unit: String,
+    val memo: String? = null,
+    @SerialName("is_purchased") val isPurchased: Boolean,
+    @SerialName("purchased_by") val purchasedBy: Long? = null,
+    @SerialName("purchased_by_nickname") val purchasedByNickname: String? = null,
+    @SerialName("purchased_at") val purchasedAt: String? = null,
+    @SerialName("created_by") val createdBy: Long,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String,
+)
+
+@Serializable
+data class ClearPurchasedResponseDto(
+    @SerialName("deleted_count") val deletedCount: Int,
+)

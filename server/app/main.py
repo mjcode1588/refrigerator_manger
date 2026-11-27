@@ -12,6 +12,7 @@ from app.api.routers.households import router as households_router
 from app.api.routers.items import router as items_router
 from app.api.routers.locations import router as locations_router
 from app.api.routers.media import router as media_router
+from app.api.routers.shopping_items import router as shopping_items_router
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
 from app.core.rate_limit import RateLimiter
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(items_router, prefix=settings.api_v1_prefix)
     app.include_router(activities_router, prefix=settings.api_v1_prefix)
     app.include_router(media_router, prefix=settings.api_v1_prefix)
+    app.include_router(shopping_items_router, prefix=settings.api_v1_prefix)
 
     # Phase 3 웹 기능 실험용 정적 UI 마운트 (로컬 환경)
     web_proto_dir = Path(__file__).resolve().parents[2] / "web-proto"
